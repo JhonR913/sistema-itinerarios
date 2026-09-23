@@ -1,0 +1,17 @@
+services:
+  airport-service:
+    build: .
+    env_file: .env
+    ports:
+      - "8001:8000"
+    depends_on:
+      - redis-airport
+    networks: [itinerarios-net]
+
+  redis-airport:
+    image: redis:7-alpine
+    networks: [itinerarios-net]
+
+networks:
+  itinerarios-net:
+    external: true

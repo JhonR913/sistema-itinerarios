@@ -1,0 +1,23 @@
+Issue Type,Epic Name,Summary,Description,Priority,Story Points,Labels,Status
+Epic,Consulta de Aeropuertos,Consulta de Aeropuertos,Epica: consulta y visualizacion de aeropuertos colombianos,,,,En progreso
+Epic,Gestion de Itinerarios,Gestion de Itinerarios,Epica: CRUD de itinerarios con validacion cruzada,,,,Por hacer
+Epic,Notificaciones Asincronas,Notificaciones Asincronas,Epica: eventos y funciones serverless,,,,Por hacer
+Epic,Seguridad y Plataforma,Seguridad y Plataforma,Epica: JWT Gateway resiliencia y seguridad,,,,Por hacer
+Epic,DevOps,DevOps,Epica: CI/CD calidad y despliegue,,,,En progreso
+Story,Consulta de Aeropuertos,US-001 Listar aeropuertos disponibles,"Como usuario quiero consultar el listado de aeropuertos colombianos disponibles para elegir origen y destino",Alta,3,backend;airport-service,Hecho
+Story,Consulta de Aeropuertos,US-002 Ver aeropuertos en un mapa interactivo,"Como usuario quiero visualizar los aeropuertos en un mapa Plotly para ubicarlos geograficamente",Alta,5,frontend,Por hacer
+Story,Consulta de Aeropuertos,US-003 Consultar detalle de un aeropuerto,"Como usuario quiero consultar el detalle de un aeropuerto por ID",Media,2,backend;airport-service,Hecho
+Story,Gestion de Itinerarios,US-004 Crear un itinerario,"Como usuario quiero crear un itinerario validando ambos aeropuertos",Alta,8,backend;itinerary-service,Por hacer
+Story,Gestion de Itinerarios,US-005 Consultar mis itinerarios,"Como usuario quiero consultar listado y detalle de mis itinerarios",Alta,3,backend;itinerary-service,Por hacer
+Story,Gestion de Itinerarios,US-006 Actualizar un itinerario,"Como usuario quiero modificar un itinerario existente",Media,5,backend;itinerary-service,Por hacer
+Story,Gestion de Itinerarios,US-007 Eliminar un itinerario,"Como usuario quiero eliminar un itinerario existente",Media,2,backend;itinerary-service,Por hacer
+Story,Notificaciones Asincronas,US-008 Recibir notificacion al crear itinerario,"Como usuario quiero recibir confirmacion cuando creo un itinerario",Alta,5,serverless;rabbitmq,Por hacer
+Story,Notificaciones Asincronas,US-009 Ver reporte agregado de itinerarios,"Como interesado quiero un reporte agregado bajo demanda",Baja,3,serverless,Por hacer
+Story,Seguridad y Plataforma,US-010 Autenticarme para usar el sistema,"Como usuario quiero obtener un JWT a partir de mi nombre de usuario",Media,3,security;gateway,Por hacer
+Story,Seguridad y Plataforma,US-011 Resiliencia ante caida de API externa,"Como usuario quiero seguir usando el sistema aunque API Colombia falle",Alta,8,resilience;airport-service,Hecho
+Story,DevOps,DEVOPS-001 Pipeline CI con pruebas unitarias,"Configurar GitHub Actions para correr pytest en cada servicio",Alta,5,devops,Por hacer
+Story,DevOps,DEVOPS-002 Integracion SonarQube,"Configurar analisis de calidad de codigo en el pipeline",Alta,3,devops,Por hacer
+Story,DevOps,DEVOPS-003 Pruebas de carga,"Configurar Locust para endpoints criticos",Media,5,devops;testing,Hecho
+Story,DevOps,DEVOPS-004 Documentacion Swagger,"Exponer OpenAPI/Swagger funcional en cada servicio",Alta,2,devops,Hecho
+Story,DevOps,DEVOPS-005 Despliegue continuo,"Configurar build y push de imagenes en main",Media,5,devops,Por hacer
+Story,DevOps,DEVOPS-006 Hardening de seguridad (guia 20 fallas),"Aplicar CLAUDE.md hook PreToolUse y GitHub Action de revision de seguridad",Alta,5,security;devops,Hecho
