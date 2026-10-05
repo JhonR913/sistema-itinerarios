@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Itinerarios Aeropuertos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0f1f; --panel: #121a33; --panel-2: #18224a; --line: #263262;
+    --text: #eef1fb; --muted: #9aa6cf; --yellow: #fcd116; --blue: #3b6cff; --red: #ff4d5e; --green: #3ddc97;
+    --radius: 16px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: radial-gradient(1200px 600px at 80% -10%, #1a2a6c55, transparent), var(--bg);
+         color: var(--text); font-family: Inter, system-ui, sans-serif; min-height: 100vh; }
+  header { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between;
+           padding: 18px 28px; border-bottom: 1px solid var(--line); position: relative; }
+  header::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 3px;
+                  background: linear-gradient(90deg, var(--yellow) 50%, var(--blue) 50% 75%, var(--red) 75%); opacity: .9; }
+  .brand { display: flex; align-items: center; gap: 12px; font-family: Sora, sans-serif; font-weight: 700; font-size: 20px; }
+  .brand .logo { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; font-size: 20px;
+                 background: linear-gradient(135deg, var(--yellow), #ff9d2e); color: #1a1300; }
+  .user { display: flex; gap: 8px; align-items: center; }
+  main { display: grid; grid-template-columns: minmax(340px, 430px) 1fr; gap: 22px; padding: 22px 28px 40px; }
+  @media (max-width: 980px) { main { grid-template-columns: 1fr; padding: 16px; } header { padding: 14px 16px; } }
+  .card { background: linear-gradient(180deg, var(--panel), #0f1630); border: 1px solid var(--line);
+          border-radius: var(--radius); padding: 18px; }
+  h2 { font-family: Sora, sans-serif; font-size: 16px; margin: 0 0 14px; display: flex; align-items: center; gap: 8px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 12px 0 6px; font-weight: 500; }
+  input, select { width: 100%; background: #0c1330; color: var(--text); border: 1px solid var(--line);
+                  border-radius: 10px; padding: 10px 12px; font: inherit; outline: none; transition: border-color .15s, box-shadow .15s; }
+  input:focus, select:focus { border-color: var(--blue); box-shadow: 0 0 0 3px #3b6cff33; }
+  input:disabled, select:disabled { opacity: .5; cursor: not-allowed; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  button { font: inherit; font-weight: 600; border: 0; border-radius: 10px; padding: 10px 16px; cursor: pointer;
+           transition: transform .08s, filter .15s, opacity .15s; color: var(--text); background: var(--panel-2); }
+  button:hover:not(:disabled) { filter: brightness(1.15); }
+  button:active:not(:disabled) { transform: translateY(1px); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  .primary { background: linear-gradient(135deg, var(--yellow), #ffb02e); color: #1a1300; }
+  .danger { background: #3a1822; color: #ff9aa6; }
+  .ghost { background: transparent; border: 1px solid var(--line); }
+  .actions { display: flex; gap: 10px; margin-top: 18px; }
+  .actions .primary { flex: 1; }
+  .hint { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted);
+          background: #0c1330; border: 1px dashed var(--line); padding: 6px 10px; border-radius: 999px; }
+  .hint b { color: var(--yellow); }
+  #map { width: 100%; height: 560px; }
+  .map-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+  .list { display: grid; gap: 10px; }
+  .it { border: 1px solid var(--line); background: #0d1433; border-radius: 14px; padding: 12px 14px; cursor: pointer;
+        transition: border-color .15s, transform .1s; }
+  .it:hover { border-color: var(--blue); transform: translateY(-1px); }
+  .it.active { border-color: var(--yellow); }
+  .it .route { font-family: Sora, sans-serif; font-weight: 600; font-size: 17px; display: flex; align-items: center; gap: 10px; }
+  .it .arrow { color: var(--yellow); }
+  .it .names { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .it .meta { display: flex; gap: 14px; margin-top: 10px; font-size: 13px; color: var(--text); align-items: center; flex-wrap: wrap; }
+  .it .btns { margin-left: auto; display: flex; gap: 8px; }
+  .it .btns button { padding: 6px 12px; font-size: 12px; }
+  .empty { color: var(--muted); text-align: center; padding: 26px 8px; font-size: 14px; }
+  .left { display: grid; gap: 22px; align-content: start; }
+  #toasts { position: fixed; right: 18px; bottom: 18px; display: grid; gap: 10px; z-index: 50; }
+  .toast { background: #121a33; border: 1px solid var(--line); border-left: 4px solid var(--blue); padding: 12px 16px;
+           border-radius: 12px; box-shadow: 0 10px 30px #0008; max-width: 360px; font-size: 14px; animation: in .2s ease-out; }
+  .toast.ok { border-left-color: var(--green); } .toast.err { border-left-color: var(--red); }
+  @keyframes in { from { opacity: 0; transform: translateY(8px); } }
+  .badge { font-size: 11px; background: #0c1330; border: 1px solid var(--line); color: var(--muted); padding: 3px 8px; border-radius: 999px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><div class="logo">✈</div> Itinerarios Colombia</div>
+  <form class="user" id="userForm" autocomplete="off">
+    <input id="username" placeholder="Tu usuario (ej. ana)" maxlength="50" pattern="[A-Za-z0-9._\-]{3,50}" required style="width:220px">
+    <button class="primary" type="submit">Ingresar</button>
+  </form>
+</header>
+
+<main>
+  <section class="left">
+    <div class="card">
+      <h2 id="formTitle">🧭 Nuevo itinerario</h2>
+      <form id="itForm" autocomplete="off">
+        <label for="dep">Aeropuerto de salida</label>
+        <select id="dep" required></select>
+        <label for="arr">Aeropuerto de llegada</label>
+        <select id="arr" required></select>
+        <div class="row">
+          <div><label for="date">Fecha de viaje</label><input id="date" type="date" required></div>
+          <div><label for="dur">Duración (min)</label><input id="dur" type="number" min="1" max="100000" step="1" required></div>
+        </div>
+        <div class="actions">
+          <button class="primary" type="submit" id="submitBtn">Crear itinerario</button>
+          <button class="ghost" type="button" id="cancelBtn" hidden>Cancelar</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>🗂 Mis itinerarios <span class="badge" id="count">0</span></h2>
+      <div class="list" id="list"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="map-head">
+      <h2 style="margin:0">🗺 Aeropuertos de Colombia <span class="badge" id="airportCount">…</span></h2>
+      <span class="hint" id="pickHint">Haz clic en un punto: elegirás la <b>salida</b></span>
+    </div>
+    <div id="map"></div>
+    <div class="legend" id="legend"></div>
+  </section>
+</main>
+<div id="toasts"></div>
+
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+<script>
+"use strict";
+// ---------- Configuración ----------
+const CONFIG = {
+  AIRPORT_API: "http://localhost:8001",
+  ITINERARY_API: "http://localhost:8002",
+};
+const TYPE_COLORS = { "Internacional": "#fcd116", "Nacional": "#3b6cff", "Militar": "#ff4d5e", "En Construccion": "#9aa6cf" };
+
+const state = { airports: [], byId: new Map(), itineraries: [], user: null, editingId: null, pick: "departure", highlight: null };
+const $ = (id) => document.getElementById(id);
+
+// ---------- Utilidades ----------
+function el(tag, props = {}, ...children) {            // construye DOM sin innerHTML (anti-XSS)
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) {
+    if (k === "class") node.className = v;
+    else if (k.startsWith("on")) node.addEventListener(k.slice(2), v);
+    else node.setAttribute(k, v);
+  }
+  for (const c of children) node.append(c);
+  return node;
+}
+function toast(msg, kind = "info") {
+  const t = el("div", { class: `toast ${kind}` }, msg);
+  $("toasts").append(t);
+  setTimeout(() => t.remove(), 4200);
+}
+class ApiError extends Error { constructor(status, message) { super(message); this.status = status; } }
+
+function messageFrom(status, data) {
+  if (data && typeof data.detail === "string") return data.detail;
+  if (data && Array.isArray(data.detail)) return "Datos inválidos: revisa los campos del formulario";
+  return `Error inesperado (${status})`;
+}
+async function api(base, path, { method = "GET", body, user } = {}) {
+  const headers = {};
+  if (body) headers["Content-Type"] = "application/json";
+  if (user) headers["X-User-Name"] = user;
+  let res;
+  try {
+    res = await fetch(base + path, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  } catch {
+    throw new ApiError(0, "No se pudo conectar con el servidor");
+  }
+  if (res.status === 204) return null;
+  let data = null;
+  try { data = await res.json(); } catch { /* sin cuerpo */ }
+  if (!res.ok) throw new ApiError(res.status, messageFrom(res.status, data));
+  return data;
+}
+const airportLabel = (a) => `${a.iata_code ?? a.icao_code ?? "—"} · ${a.name}`;
+const airportCode = (id) => { const a = state.byId.get(id); return a ? (a.iata_code ?? a.icao_code ?? "—") : "?"; };
+const airportName = (id) => state.byId.get(id)?.name ?? "Aeropuerto desconocido";
+function fmtDuration(min) { const h = Math.floor(min / 60), m = min % 60; return h ? `${h} h${m ? ` ${m} min` : ""}` : `${m} min`; }
+function fmtDate(iso) {
+  return new Date(iso + "T00:00:00").toLocaleDateString("es-CO", { day: "numeric", month: "short", year: "numeric" });
+}
+
+// ---------- Aeropuertos y mapa ----------
+async function loadAirports() {
+  try {
+    state.airports = (await api(CONFIG.AIRPORT_API, "/airports")).sort((a, b) => a.name.localeCompare(b.name, "es"));
+  } catch (e) {
+    toast(e.message, "err");
+    $("airportCount").textContent = "sin datos";
+    return;
+  }
+  state.byId = new Map(state.airports.map((a) => [a.id, a]));
+  for (const sel of [$("dep"), $("arr")]) {
+    sel.replaceChildren(el("option", { value: "" }, "Selecciona un aeropuerto…"),
+      ...state.airports.map((a) => el("option", { value: a.id }, airportLabel(a))));
+  }
+  const withCoords = state.airports.filter((a) => a.latitude !== null && a.longitude !== null);
+  $("airportCount").textContent = `${withCoords.length} en el mapa`;
+  const types = [...new Set(state.airports.map((a) => a.airport_type))];
+  $("legend").replaceChildren(...types.map((t) => {
+    const dot = el("span", { class: "dot" }); dot.style.background = TYPE_COLORS[t] ?? "#9aa6cf";
+    return el("span", {}, dot, t);
+  }));
+  drawMap();
+}
+
+function routeIds() {
+  const d = $("dep").value, a = $("arr").value;
+  if (d && a) return [d, a];
+  return state.highlight;
+}
+function drawMap() {
+  if (typeof Plotly === "undefined") { $("map").textContent = "No se pudo cargar Plotly (revisa tu conexión)."; return; }
+  const pts = state.airports.filter((a) => a.latitude !== null && a.longitude !== null);
+  const traces = [{
+    type: "scattergeo", mode: "markers", lat: pts.map((a) => a.latitude), lon: pts.map((a) => a.longitude),
+    customdata: pts.map((a) => a.id),
+    text: pts.map((a) => `<b>${a.name}</b><br>${a.iata_code ?? "—"} / ${a.icao_code ?? "—"} · ${a.airport_type}`),
+    hoverinfo: "text",
+    marker: { size: 10, color: pts.map((a) => TYPE_COLORS[a.airport_type] ?? "#9aa6cf"), line: { width: 1.5, color: "#0a0f1f" } },
+  }];
+  const ids = routeIds();
+  if (ids) {
+    const [d, a] = ids.map((id) => state.byId.get(id));
+    if (d?.latitude != null && a?.latitude != null) {
+      traces.push({
+        type: "scattergeo", mode: "lines+markers", lat: [d.latitude, a.latitude], lon: [d.longitude, a.longitude],
+        line: { width: 3, color: "#fcd116" }, marker: { size: 14, color: "#fcd116", symbol: "circle-open", line: { width: 3 } },
+        hoverinfo: "skip",
+      });
+    }
+  }
+  const layout = {
+    margin: { l: 0, r: 0, t: 0, b: 0 }, paper_bgcolor: "rgba(0,0,0,0)", showlegend: false,
+    geo: { projection: { type: "mercator" }, lonaxis: { range: [-80, -66] }, lataxis: { range: [-5, 13.5] },
+           showland: true, landcolor: "#1b2547", showocean: true, oceancolor: "#0a0f1f", showcountries: true,
+           countrycolor: "#3a4a86", coastlinecolor: "#3a4a86", showframe: false, bgcolor: "rgba(0,0,0,0)" },
+  };
+  Plotly.react("map", traces, layout, { displayModeBar: false, responsive: true }).then(() => {
+    if (!$("map").dataset.bound) {
+      $("map").dataset.bound = "1";
+      $("map").on("plotly_click", (ev) => onMapClick(ev.points[0].customdata));
+    }
+  });
+}
+function onMapClick(id) {
+  if (state.pick === "departure") { $("dep").value = id; state.pick = "arrival"; }
+  else { $("arr").value = id; state.pick = "departure"; }
+  updateHint(); drawMap();
+}
+function updateHint() {
+  $("pickHint").replaceChildren("Haz clic en un punto: elegirás la ", el("b", {}, state.pick === "departure" ? "salida" : "llegada"));
+}
+
+// ---------- Itinerarios ----------
+async function loadItineraries() {
+  try {
+    state.itineraries = await api(CONFIG.ITINERARY_API, "/itineraries", { user: state.user });
+  } catch (e) { toast(e.message, "err"); return; }
+  renderList();
+}
+function renderList() {
+  $("count").textContent = state.itineraries.length;
+  if (!state.itineraries.length) {
+    $("list").replaceChildren(el("div", { class: "empty" }, state.user ? "Aún no tienes itinerarios. ¡Crea el primero!" : "Ingresa con tu usuario para ver tus itinerarios."));
+    return;
+  }
+  $("list").replaceChildren(...state.itineraries.map((it) => {
+    const card = el("div", { class: "it" + (state.highlight && state.highlight[0] === it.departure_airport_id && state.highlight[1] === it.arrival_airport_id ? " active" : ""),
+      onclick: () => { state.highlight = [it.departure_airport_id, it.arrival_airport_id]; $("dep").value = ""; $("arr").value = ""; renderList(); drawMap(); } },
+      el("div", { class: "route" }, airportCode(it.departure_airport_id), el("span", { class: "arrow" }, "→"), airportCode(it.arrival_airport_id)),
+      el("div", { class: "names" }, `${airportName(it.departure_airport_id)} → ${airportName(it.arrival_airport_id)}`),
+      el("div", { class: "meta" }, `📅 ${fmtDate(it.travel_date)}`, `⏱ ${fmtDuration(it.duration_minutes)}`,
+        el("span", { class: "btns" },
+          el("button", { onclick: (e) => { e.stopPropagation(); startEdit(it); } }, "Editar"),
+          el("button", { class: "danger", onclick: (e) => { e.stopPropagation(); removeItinerary(it); } }, "Eliminar"))));
+    return card;
+  }));
+}
+function setFormEnabled(on) { for (const id of ["dep", "arr", "date", "dur", "submitBtn"]) $(id).disabled = !on; }
+function resetForm() {
+  state.editingId = null; $("itForm").reset();
+  $("formTitle").textContent = "🧭 Nuevo itinerario"; $("submitBtn").textContent = "Crear itinerario"; $("cancelBtn").hidden = true;
+}
+function startEdit(it) {
+  state.editingId = it.id;
+  $("dep").value = it.departure_airport_id; $("arr").value = it.arrival_airport_id;
+  $("date").value = it.travel_date; $("dur").value = it.duration_minutes;
+  $("formTitle").textContent = "✏️ Editar itinerario"; $("submitBtn").textContent = "Guardar cambios"; $("cancelBtn").hidden = false;
+  window.scrollTo({ top: 0, behavior: "smooth" }); drawMap();
+}
+async function removeItinerary(it) {
+  if (!confirm(`¿Eliminar el itinerario ${airportCode(it.departure_airport_id)} → ${airportCode(it.arrival_airport_id)}?`)) return;
+  try {
+    await api(CONFIG.ITINERARY_API, `/itineraries/${it.id}`, { method: "DELETE", user: state.user });
+    toast("Itinerario eliminado", "ok");
+    if (state.editingId === it.id) resetForm();
+    await loadItineraries(); drawMap();
+  } catch (e) { toast(e.message, "err"); }
+}
+
+// ---------- Eventos ----------
+$("userForm").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const name = $("username").value.trim();
+  if (!/^[A-Za-z0-9._-]{3,50}$/.test(name)) { toast("Usuario inválido: 3-50 caracteres (letras, números, . _ -)", "err"); return; }
+  state.user = name; sessionStorage.setItem("user", name);
+  setFormEnabled(true); resetForm(); state.highlight = null;
+  await loadItineraries(); toast(`Hola, ${name} 👋`, "ok");
+});
+$("itForm").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const payload = { departure_airport_id: $("dep").value, arrival_airport_id: $("arr").value,
+                    travel_date: $("date").value, duration_minutes: Number($("dur").value) };
+  try {
+    if (state.editingId) {
+      await api(CONFIG.ITINERARY_API, `/itineraries/${state.editingId}`, { method: "PATCH", body: payload, user: state.user });
+      toast("Itinerario actualizado", "ok");
+    } else {
+      await api(CONFIG.ITINERARY_API, "/itineraries", { method: "POST", body: { username: state.user, ...payload }, user: state.user });
+      toast("Itinerario creado", "ok");
+    }
+    state.highlight = [payload.departure_airport_id, payload.arrival_airport_id];
+    resetForm(); await loadItineraries(); drawMap();
+  } catch (e) { toast(e.message, "err"); }
+});
+$("cancelBtn").addEventListener("click", () => { resetForm(); drawMap(); });
+for (const id of ["dep", "arr"]) $(id).addEventListener("change", drawMap);
+
+// ---------- Inicio ----------
+setFormEnabled(false); renderList(); updateHint(); loadAirports();
+const saved = sessionStorage.getItem("user");
+if (saved) { $("username").value = saved; $("userForm").requestSubmit(); }
+</script>
+</body>
+</html>
