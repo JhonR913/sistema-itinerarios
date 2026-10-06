@@ -3,7 +3,8 @@ from datetime import date
 from uuid import uuid4
 
 from app.domain.exceptions import AirportNotFoundError, ItineraryNotFoundError
-from app.domain.models import Itinerary
+from app.domain.events import ItineraryCreatedEvent
+from app.domain.models import AirportSnapshot, Itinerary
 from app.domain.ports import AirportGateway, ItineraryRepository
 
 
@@ -40,8 +41,12 @@ class ItineraryService:
             travel_date=cmd.travel_date,
             duration_minutes=cmd.duration_minutes,
         )
-        self._ensure_airports_exist(itinerary.departure_airport_id, itinerary.arrival_airport_id)  # RF-005
-        return self._repo.add(itinerary)
+        itinerary = replace(  # RF-005 + snapshot inmutable (ADR-006)
+            itinerary,
+            departure_snapshot=self._require_airport(itinerary.departure_airport_id),
+            arrival_snapshot=self._require_airport(itinerary.arrival_airport_id),
+        )
+        return self._repo.add(itinerary, ItineraryCreatedEvent.from_itinerary(itinerary))  # RF-010
 
     def get(self, itinerary_id: str, username: str) -> Itinerary:
         return self._get_owned(itinerary_id, username)
@@ -54,15 +59,11 @@ class ItineraryService:
         changes = {k: v for k, v in vars(cmd).items() if v is not None}
         updated = replace(current, **changes)  # re-ejecuta validaciones del dominio
 
-        changed_airports = [
-            new
-            for new, old in (
-                (updated.departure_airport_id, current.departure_airport_id),
-                (updated.arrival_airport_id, current.arrival_airport_id),
-            )
-            if new != old
-        ]
-        self._ensure_airports_exist(*changed_airports)  # RF-008: re-valida solo si cambian
+        # RF-008: re-valida y renueva el snapshot solo del aeropuerto que cambió
+        if updated.departure_airport_id != current.departure_airport_id:
+            updated = replace(updated, departure_snapshot=self._require_airport(updated.departure_airport_id))
+        if updated.arrival_airport_id != current.arrival_airport_id:
+            updated = replace(updated, arrival_snapshot=self._require_airport(updated.arrival_airport_id))
         return self._repo.update(updated)
 
     def delete(self, itinerary_id: str, username: str) -> None:
@@ -76,7 +77,8 @@ class ItineraryService:
             raise ItineraryNotFoundError()
         return itinerary
 
-    def _ensure_airports_exist(self, *airport_ids: str) -> None:
-        for airport_id in airport_ids:
-            if not self._airports.exists(airport_id):
-                raise AirportNotFoundError()
+    def _require_airport(self, airport_id: str) -> AirportSnapshot:
+        snapshot = self._airports.find(airport_id)
+        if snapshot is None:
+            raise AirportNotFoundError()
+        return snapshot

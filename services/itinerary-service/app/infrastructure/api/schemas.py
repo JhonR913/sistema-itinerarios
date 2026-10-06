@@ -32,6 +32,14 @@ class ItineraryUpdate(BaseModel):
         return self
 
 
+class AirportSnapshotOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    iata_code: str
+    name: str
+    city: str
+
+
 class ItineraryOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -41,3 +49,5 @@ class ItineraryOut(BaseModel):
     arrival_airport_id: str
     travel_date: date
     duration_minutes: int
+    departure_snapshot: AirportSnapshotOut | None = None
+    arrival_snapshot: AirportSnapshotOut | None = None

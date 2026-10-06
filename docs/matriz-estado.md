@@ -20,6 +20,22 @@ ya se implementó y se verificó ejecutando algo.
 | Swagger | Implementado (automático) | FastAPI expone `/docs` sin configuración adicional |
 | Docker | Implementado | `Dockerfile` + `docker-compose.yml` (no verificado con `docker compose up` real en este entorno) |
 
-## Pendiente para el siguiente sprint (Sprint 2 — Itinerary Service)
+## Sprint 2 — Itinerary Service
 
-Ver jira/backlog.csv, épica "Gestión de Itinerarios" (US-004 a US-007).
+| Ítem | Estado | Evidencia |
+|---|---|---|
+| RF-004/005/006 Crear, validar aeropuertos y rechazar salida = llegada | Implementado | `app/application/use_cases.py::ItineraryService.create` |
+| RF-007/008/009 Consultar, actualizar y eliminar | Implementado | `ItineraryService.get/list/update/delete` |
+| ADR-006 / RN-007 Snapshot inmutable de aeropuertos | Implementado | `domain/models.py::AirportSnapshot`, columnas `*_iata/_name/_city` |
+| RF-010 / RN-006 Evento `ItineraryCreatedEvent` en Outbox (misma transacción) | Implementado | `adapters/sqlalchemy_repository.py::add`, tabla `outbox` (PENDING) |
+| Anti-IDOR y anti mass-assignment | Implementado | `_get_owned`, `ItineraryUpdate(extra="forbid")` |
+| URL del Airport Service con `/api` | Corregido | `infrastructure/config.py`, `.env.example` |
+| Pruebas | **26/26 PASS** | `pytest` en `services/itinerary-service` |
+| Autenticación | Placeholder (header `X-User-Name`) | Pendiente US-010 (JWT) |
+| Worker que publica el Outbox en RabbitMQ | Pendiente | US-008 |
+| PostgreSQL + Alembic | Pendiente (hoy SQLite con `create_all`) | ADR-001 |
+| Retry / backoff / Circuit Breaker hacia Airport Service, 502 | Pendiente | RNF-05 |
+| docker-compose + healthcheck de Itinerary Service | Pendiente | RNF-07, RNF-15 |
+
+Nota: al cambiar el esquema (columnas de snapshot y tabla `outbox`) hay que borrar la base SQLite
+local anterior (`itineraries.db`) porque `create_all` no altera tablas existentes.

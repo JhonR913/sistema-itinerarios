@@ -4,6 +4,16 @@ from datetime import date
 from app.domain.exceptions import InvalidItineraryError, SameAirportError
 
 
+@dataclass(frozen=True)
+class AirportSnapshot:
+    """Copia inmutable de los datos mínimos de un aeropuerto al momento de crear/editar
+    el itinerario (ADR-006, RN-007). No se actualiza si el aeropuerto cambia en el origen."""
+
+    iata_code: str
+    name: str
+    city: str
+
+
 @dataclass
 class Itinerary:
     id: str
@@ -12,6 +22,8 @@ class Itinerary:
     arrival_airport_id: str
     travel_date: date
     duration_minutes: int
+    departure_snapshot: AirportSnapshot | None = None
+    arrival_snapshot: AirportSnapshot | None = None
 
     def __post_init__(self) -> None:
         self.validate()

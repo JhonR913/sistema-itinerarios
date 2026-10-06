@@ -1,11 +1,13 @@
 from abc import ABC, abstractmethod
 
-from app.domain.models import Itinerary
+from app.domain.events import ItineraryCreatedEvent
+from app.domain.models import AirportSnapshot, Itinerary
 
 
 class ItineraryRepository(ABC):
     @abstractmethod
-    def add(self, itinerary: Itinerary) -> Itinerary: ...
+    def add(self, itinerary: Itinerary, event: ItineraryCreatedEvent) -> Itinerary:
+        """Guarda el itinerario y su evento en Outbox en UNA sola transacción."""
 
     @abstractmethod
     def get_by_id(self, itinerary_id: str) -> Itinerary | None: ...
@@ -22,5 +24,5 @@ class ItineraryRepository(ABC):
 
 class AirportGateway(ABC):
     @abstractmethod
-    def exists(self, airport_id: str) -> bool:
-        """True si el aeropuerto existe en Airport Service."""
+    def find(self, airport_id: str) -> AirportSnapshot | None:
+        """Datos del aeropuerto si existe en Airport Service; None si no existe."""
