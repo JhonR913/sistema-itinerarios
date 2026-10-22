@@ -1,0 +1,30 @@
+services:
+  postgres-notification:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: notification
+      POSTGRES_USER: notif
+      POSTGRES_PASSWORD: notif
+    volumes:
+      - notification-db-data:/var/lib/postgresql/data
+      - ./migration.sql:/docker-entrypoint-initdb.d/001_init.sql
+    networks: [itinerarios-net]
+
+  # OpenFaaS real requiere su stack completo (gateway + faas-cli). Para
+  # desarrollo local simplificado, este contenedor consume RabbitMQ
+  # directamente e invoca handler.py por cada mensaje, sin el gateway
+  # completo de OpenFaaS (documentado en README del servicio).
+  send-notification-function:
+    build: .
+    env_file: .env
+    environment:
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672/}
+    depends_on: [postgres-notification, rabbitmq]
+    networks: [itinerarios-net]
+
+volumes:
+  notification-db-data:
+
+networks:
+  itinerarios-net:
+    external: true

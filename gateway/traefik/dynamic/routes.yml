@@ -1,0 +1,28 @@
+http:
+  middlewares:
+    rate-limit-default:
+      rateLimit:
+        average: 20
+        burst: 40
+
+  routers:
+    airport-router:
+      rule: "PathPrefix(`/api/airports`)"
+      service: airport-service
+      middlewares: ["rate-limit-default"]
+
+    itinerary-router:
+      rule: "PathPrefix(`/api/itineraries`)"
+      service: itinerary-service
+      middlewares: ["rate-limit-default"]
+
+  services:
+    airport-service:
+      loadBalancer:
+        servers:
+          - url: "http://airport-service:8000"
+
+    itinerary-service:
+      loadBalancer:
+        servers:
+          - url: "http://itinerary-service:8000"
