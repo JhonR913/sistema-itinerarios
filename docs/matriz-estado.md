@@ -39,3 +39,18 @@ composition root con la capa de traducción HTTP. Se extrajo a
 FastAPI. No era una violación de la regla de dependencia, pero sí
 incumplía la propia regla del `CLAUDE.md` de no mezclar responsabilidades
 en el router. Pruebas re-ejecutadas tras el cambio: **4/4 PASS**.
+
+## Sprint 2 — Itinerary Service
+
+| Ítem | Estado | Evidencia |
+|---|---|---|
+| RF-004 a RF-010 | Implementado | `app/application/use_cases.py` |
+| Patrón Outbox (Double Write Problem) | Implementado | `outbox_publisher.py` + `outbox_worker.py` |
+| Adapter HTTP a Airport Service + Circuit Breaker | Implementado | `airport_http_adapter.py` |
+| RNF-SEC-006 (anti-IDOR) | Implementado y probado | `test_UT008...` |
+| RNF-SEC-007 (anti mass-assignment) | Implementado y probado | `test_UT010...` |
+| RNF-SEC-004 (sin SQL concatenado) | Implementado | `postgres_repository.py`, 100% `text()` parametrizado |
+| Composition root limpia desde el inicio | Implementado | `dependencies.py`, lección del audit de Sprint 1 aplicada sin parche posterior |
+| UT-004 a UT-011 + 2 complementarias | **Ejecutadas — 10/10 PASS** | `pytest tests/unit -v` |
+| Pruebas de carga | Diseñadas, no ejecutadas aún | `tests/load/locustfile.py` |
+| Docker | Escrito, no verificado end-to-end (sin Docker en este entorno) | `Dockerfile` + `docker-compose.yml` |
