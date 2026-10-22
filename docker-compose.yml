@@ -1,0 +1,12 @@
+# Orquestador raiz (monorepo): una sola red compartida para todos los
+# servicios, RabbitMQ como pieza compartida entre Itinerary Service
+# (productor, via outbox-worker) y Notification Function (consumidor).
+#
+# Uso:
+#   docker network create itinerarios-net   # una sola vez
+#   docker compose up -d --build
+include:
+  - gateway/traefik/docker-compose.yml
+  - services/airport-service/docker-compose.yml
+  - services/itinerary-service/docker-compose.yml
+  - services/notification-function/docker-compose.yml

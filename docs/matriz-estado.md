@@ -54,3 +54,23 @@ en el router. Pruebas re-ejecutadas tras el cambio: **4/4 PASS**.
 | UT-004 a UT-011 + 2 complementarias | **Ejecutadas — 10/10 PASS** | `pytest tests/unit -v` |
 | Pruebas de carga | Diseñadas, no ejecutadas aún | `tests/load/locustfile.py` |
 | Docker | Escrito, no verificado end-to-end (sin Docker en este entorno) | `Dockerfile` + `docker-compose.yml` |
+
+## Sprint 3 — Notification Function + Gateway + conexión RabbitMQ real
+
+| Ítem | Estado | Evidencia |
+|---|---|---|
+| RF-012 Procesar notificación | Implementado | `services/notification-function/handler.py` |
+| Idempotencia ante reentrega (at-least-once) | Implementado y probado | `tests/unit/test_handler.py` — 2/2 PASS (inserta 1ra vez, ignora duplicado) |
+| Conexión real a RabbitMQ | Implementado | `consumer.py` (pika, basic_consume + ack/nack) |
+| RabbitMQ como pieza compartida (un solo broker) | Verificado | Declarado una vez en `itinerary-service/docker-compose.yml`, referenciado desde `notification-function` vía `depends_on` + misma red `itinerarios-net` |
+| API Gateway (Traefik) | Implementado | `gateway/traefik/` — routing + rate limiting, sin lógica de negocio |
+| docker-compose raíz (monorepo) | Implementado | `docker-compose.yml` con `include:` de los 4 sub-compose |
+| Validación de sintaxis de los 6 YAML (compose + Traefik) | **Verificada — 6/6 OK** | `python3 -c "import yaml; yaml.safe_load(...)"` sobre cada archivo |
+| `docker compose up` end-to-end real | **No verificado** | Este entorno no tiene Docker instalado; pendiente de correrlo en tu máquina (ver sección "Cómo levantar todo" en el README) |
+
+## Resumen de pruebas unitarias ejecutadas hasta ahora
+
+- Airport Service: 4/4 PASS
+- Itinerary Service: 10/10 PASS
+- Notification Function: 2/2 PASS
+- **Total: 16/16 PASS**, en los 3 servicios Python del sistema.
