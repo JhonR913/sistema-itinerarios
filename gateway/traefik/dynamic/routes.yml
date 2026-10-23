@@ -6,6 +6,11 @@ http:
         burst: 40
 
   routers:
+    auth-router:
+      rule: "PathPrefix(`/api/auth`)"
+      service: auth-stub
+      middlewares: ["rate-limit-default"]
+
     airport-router:
       rule: "PathPrefix(`/api/airports`)"
       service: airport-service
@@ -17,6 +22,11 @@ http:
       middlewares: ["rate-limit-default"]
 
   services:
+    auth-stub:
+      loadBalancer:
+        servers:
+          - url: "http://auth-stub:8000"
+
     airport-service:
       loadBalancer:
         servers:

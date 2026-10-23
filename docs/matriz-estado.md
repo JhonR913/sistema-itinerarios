@@ -92,3 +92,22 @@ ni Redis ni Postgres tienen nada (el error SÍ se propaga, no se inventa
 una respuesta vacía).
 
 **Total Airport Service tras el fix: 6/6 pruebas unitarias en verde.**
+
+## Sprint 4 — Auth stub (emisor de JWT)
+
+| Ítem | Estado | Evidencia |
+|---|---|---|
+| RF-014 Autenticar usuario | Implementado | `services/auth-stub/app/application/use_cases.py::IssueToken` |
+| RF-015 Propagar identidad | Implementado (routing) | Gateway enruta `/api/auth` sin tocar el token |
+| Mismo algoritmo/claim que valida Itinerary Service | Verificado con prueba cruzada | `test_issued_token_is_valid_hs256_and_carries_username_as_sub` — misma librería (`python-jose`), mismo claim `sub` |
+| Rechazo de secreto incorrecto | Probado | `test_token_signed_with_wrong_secret_fails_validation` |
+| **Total Auth stub** | **5/5 PASS** | |
+| Conectado al Gateway y al compose raíz | Implementado | `gateway/traefik/dynamic/routes.yml`, `docker-compose.yml` raíz con `include:` de 5 sub-compose |
+
+## Total acumulado de pruebas unitarias (todos los servicios Python)
+
+- Airport Service: 6/6 PASS (4 originales + 2 de resiliencia con Postgres)
+- Itinerary Service: 10/10 PASS
+- Notification Function: 2/2 PASS
+- Auth stub: 5/5 PASS
+- **Total: 23/23 PASS**
