@@ -8,3 +8,5 @@ pydantic-settings==2.5.2
 pytest==8.3.3
 pytest-cov==5.0.0
 locust==2.31.5
+sqlalchemy==2.0.35
+psycopg2-binary==2.9.9
