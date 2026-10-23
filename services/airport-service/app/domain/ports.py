@@ -25,3 +25,22 @@ class AirportCachePort(ABC):
     @abstractmethod
     def set(self, key: str, value, ttl_seconds: int) -> None:
         ...
+
+
+class AirportDurableStorePort(ABC):
+    """Almacen durable (PostgreSQL): segunda linea de resiliencia por
+    debajo de la cache Redis. Separado de AirportRepositoryPort porque
+    tiene una responsabilidad distinta (persistencia, no traduccion del
+    modelo externo)."""
+
+    @abstractmethod
+    def upsert_many(self, airports: List[Airport]) -> None:
+        ...
+
+    @abstractmethod
+    def get_all(self) -> List[Airport]:
+        ...
+
+    @abstractmethod
+    def get_by_id(self, airport_id: str) -> Optional[Airport]:
+        ...

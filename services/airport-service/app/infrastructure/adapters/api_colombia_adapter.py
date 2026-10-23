@@ -1,9 +1,10 @@
 """
-Adapter (patron Adapter formal, ver Documento_Arquitectura.docx seccion 4
-y Documento_Diseno_y_Diagramas.docx figura 7): traduce el modelo externo
-de API Colombia al modelo de dominio interno Airport, e implementa el
-puerto AirportRepositoryPort. Incluye Circuit Breaker + Retry/Backoff +
-Cache (RNF-002, RNF-003, RF-016, RF-017 en Documento_Requerimientos.docx).
+Adapter (patron Adapter formal, Documento_Arquitectura.docx seccion 4):
+traduce el modelo externo de API Colombia al modelo de dominio interno
+Airport, e implementa AirportRepositoryPort. Resiliencia en 3 niveles:
+  1. Redis (fresco)       -> respuesta inmediata.
+  2. API Colombia (vivo)  -> via Circuit Breaker + Retry/Backoff.
+  3. Redis (stale) o PostgreSQL (durable) -> si el circuito esta abierto.
 """
 from typing import List, Optional
 
@@ -12,7 +13,7 @@ import pybreaker
 from tenacity import retry, stop_after_attempt, wait_exponential_jitter
 
 from app.domain.models import Airport
-from app.domain.ports import AirportRepositoryPort, AirportCachePort
+from app.domain.ports import AirportRepositoryPort, AirportCachePort, AirportDurableStorePort
 
 API_COLOMBIA_BASE_URL = "https://api-colombia.com/api/v1"
 CACHE_TTL_SECONDS = 300
@@ -21,7 +22,6 @@ airport_breaker = pybreaker.CircuitBreaker(fail_max=3, reset_timeout=30)
 
 
 def _map_external_to_domain(raw: dict) -> Airport:
-    """Unica funcion que conoce el formato crudo de API Colombia."""
     city = raw.get("city") or {}
     return Airport(
         id=str(raw["id"]),
@@ -35,8 +35,10 @@ def _map_external_to_domain(raw: dict) -> Airport:
 
 
 class ApiColombiaAdapter(AirportRepositoryPort):
-    def __init__(self, cache: AirportCachePort, http_client: Optional[httpx.Client] = None):
+    def __init__(self, cache: AirportCachePort, durable_store: AirportDurableStorePort,
+                 http_client: Optional[httpx.Client] = None):
         self._cache = cache
+        self._durable_store = durable_store
         self._client = http_client or httpx.Client(timeout=3.0)
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential_jitter(initial=0.5, max=4))
@@ -54,12 +56,19 @@ class ApiColombiaAdapter(AirportRepositoryPort):
         try:
             raw_list = airport_breaker.call(self._fetch, "/Airport")
         except pybreaker.CircuitBreakerError:
+            # Nivel 2 de fallback: Redis stale.
             stale = self._cache.get(cache_key + ":stale")
             if stale is not None:
                 return stale
+            # Nivel 3 de fallback: PostgreSQL durable. Solo aqui, cuando
+            # ya no queda nada en Redis, se consulta la base de datos.
+            durable = self._durable_store.get_all()
+            if durable:
+                return durable
             raise
 
         airports = [_map_external_to_domain(item) for item in raw_list]
+        self._durable_store.upsert_many(airports)
         self._cache.set(cache_key, airports, CACHE_TTL_SECONDS)
         self._cache.set(cache_key + ":stale", airports, CACHE_TTL_SECONDS * 20)
         return airports

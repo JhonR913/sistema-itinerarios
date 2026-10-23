@@ -74,3 +74,21 @@ en el router. Pruebas re-ejecutadas tras el cambio: **4/4 PASS**.
 - Itinerary Service: 10/10 PASS
 - Notification Function: 2/2 PASS
 - **Total: 16/16 PASS**, en los 3 servicios Python del sistema.
+
+## Fix post-Sprint 3 — Airport Service sin base de datos propia (gap real detectado)
+
+Se detectó que Airport Service no tenía base de datos relacional propia
+(solo Redis), incumpliendo el requisito explícito de la rúbrica ("una
+base de datos por servicio") y desalineado del Diagrama Entidad-Relación
+ya cerrado (`Documento_Diseno_y_Diagramas.docx` figura 5, tabla `airports`
+en `airport_db`).
+
+**Corregido:** se agregó `PostgresAirportStore` como tercer nivel de
+resiliencia (Redis fresco → Redis stale → PostgreSQL durable → error),
+con su propia migración (`migrations/001_init.sql`) y su propio
+contenedor en `docker-compose.yml`. Pruebas nuevas: 2/2 PASS, verificando
+el fallback a Postgres con el circuito forzado abierto y el caso donde
+ni Redis ni Postgres tienen nada (el error SÍ se propaga, no se inventa
+una respuesta vacía).
+
+**Total Airport Service tras el fix: 6/6 pruebas unitarias en verde.**
