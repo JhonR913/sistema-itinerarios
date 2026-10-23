@@ -1,12 +1,14 @@
 # Orquestador raiz (monorepo): una sola red compartida para todos los
-# servicios, RabbitMQ como pieza compartida entre Itinerary Service
-# (productor, via outbox-worker) y Notification Function (consumidor).
+# servicios. IMPORTANTE: auth-stub e itinerary-service deben tener el
+# MISMO valor de JWT_SECRET en sus respectivos .env (uno emite, el otro
+# valida) — ver README "Variables compartidas entre servicios".
 #
 # Uso:
 #   docker network create itinerarios-net   # una sola vez
 #   docker compose up -d --build
 include:
   - gateway/traefik/docker-compose.yml
+  - services/auth-stub/docker-compose.yml
   - services/airport-service/docker-compose.yml
   - services/itinerary-service/docker-compose.yml
   - services/notification-function/docker-compose.yml
