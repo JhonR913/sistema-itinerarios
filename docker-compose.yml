@@ -1,7 +1,6 @@
-# Orquestador raiz (monorepo): una sola red compartida para todos los
-# servicios. IMPORTANTE: auth-stub e itinerary-service deben tener el
-# MISMO valor de JWT_SECRET en sus respectivos .env (uno emite, el otro
-# valida) — ver README "Variables compartidas entre servicios".
+# Orquestador raiz (monorepo). IMPORTANTE: auth-stub e itinerary-service
+# deben compartir el mismo JWT_SECRET en sus .env (uno emite, el otro
+# valida). El frontend usa VITE_API_BASE_URL apuntando al Gateway.
 #
 # Uso:
 #   docker network create itinerarios-net   # una sola vez
@@ -12,3 +11,4 @@ include:
   - services/airport-service/docker-compose.yml
   - services/itinerary-service/docker-compose.yml
   - services/notification-function/docker-compose.yml
+  - frontend/docker-compose.yml
