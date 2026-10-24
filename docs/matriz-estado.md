@@ -111,3 +111,28 @@ una respuesta vacía).
 - Notification Function: 2/2 PASS
 - Auth stub: 5/5 PASS
 - **Total: 23/23 PASS**
+
+## Sprint 5 — Frontend (RF-003 mapa + gestión de itinerarios)
+
+| Ítem | Estado | Evidencia real |
+|---|---|---|
+| RF-003 Mapa interactivo con Plotly | Implementado | `src/features/airports/AirportMap.tsx` |
+| Arquitectura en capas (api/, features/, types/, lib/) | Implementado | Ver `frontend/README.md` |
+| Token JWT solo en memoria (anti falla #10) | Implementado | `src/features/auth/AuthContext.tsx` |
+| Validación en frontend NO reemplaza al backend | Documentado y aplicado | `ItineraryForm.tsx` valida origen≠destino, pero el backend es la autoridad |
+| `npm install` | **Ejecutado — 527 paquetes instalados** | |
+| Vulnerabilidades de dependencias | Detectadas (7, todas en deps de desarrollo: vitest/esbuild) — intentado fix mayor, revertido por conflictos de peer deps; riesgo aceptado y documentado porque no afectan el bundle de producción | `npm audit` |
+| Pruebas (vitest + testing-library) | **Ejecutadas — 2/2 PASS** | `npm test` sobre `useAirports.test.ts`, con `fetch` mockeado |
+| Lint (eslint) | **Ejecutado — 0 errores, 1 warning menor** | `npm run lint` |
+| Build de producción | **Ejecutado y exitoso** | `npm run build` — bundle inicial 150 KB (antes 5 MB) tras code-splitting de Plotly |
+| Docker | Escrito, no verificado end-to-end (sin Docker en este entorno) | `Dockerfile` (multi-stage, nginx) + `docker-compose.yml` |
+| Conectado al compose raíz | Implementado | `docker-compose.yml` raíz, 6 sub-compose vía `include:` |
+
+## Total final de pruebas automatizadas ejecutadas
+
+- Airport Service: 6/6 PASS
+- Itinerary Service: 10/10 PASS
+- Notification Function: 2/2 PASS
+- Auth stub: 5/5 PASS
+- Frontend: 2/2 PASS
+- **Total: 25/25 PASS**, además de lint limpio y build de producción real.
