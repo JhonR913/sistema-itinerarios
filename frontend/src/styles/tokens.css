@@ -1,0 +1,76 @@
+/*
+ * Tokens del sistema de diseño. Todo valor visual reutilizable vive aquí;
+ * los componentes solo referencian variables, nunca colores sueltos.
+ */
+:root {
+  color-scheme: light;
+
+  /* Identidad (azul) */
+  --color-night: #0b1220;
+  --color-deep: #14243a;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-primary-soft: #e8efff;
+  --color-sky: #60a5fa;
+
+  /* Neutros */
+  --color-bg: #f4f7fb;
+  --color-surface: #ffffff;
+  --color-surface-sunken: #eef2f8;
+  --color-border: #dce4ef;
+  --color-border-strong: #c3cfe0;
+  --color-text: #172033;
+  --color-text-muted: #56657c; /* 5.6:1 sobre blanco y 5.1:1 sobre --color-bg */
+  --color-on-dark: #e6edf7;
+  --color-on-dark-muted: #9fb0c8;
+
+  /* Semánticos: solo para estados reales */
+  --color-success: #15803d;
+  --color-success-soft: #e7f6ec;
+  --color-warning: #b45309;
+  --color-warning-soft: #fdf1e1;
+  --color-danger: #b91c1c;
+  --color-danger-soft: #fdeaea;
+
+  /* Mapa */
+  --map-ocean: #0b1626;
+  --map-land: #16263d;
+  --map-border: #34506f;
+  --map-route: #60a5fa;
+  --map-route-active: #ffffff;
+
+  /* Tipografía (pila del sistema, sin descargas externas) */
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI Variable Text", "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.9375rem;
+  --text-lg: 1.0625rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.875rem;
+
+  /* Espaciado (escala de 4 px) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+
+  /* Forma y profundidad */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+  --shadow-sm: 0 1px 2px rgb(15 30 60 / 6%);
+  --shadow-md: 0 4px 14px rgb(15 30 60 / 8%), 0 1px 3px rgb(15 30 60 / 6%);
+  --shadow-lg: 0 18px 40px rgb(8 16 32 / 22%);
+  --ring: 0 0 0 3px rgb(37 99 235 / 35%);
+
+  --topbar-height: 60px;
+  --transition: 140ms ease;
+}

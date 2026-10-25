@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
+import { Icon } from "../../components/ui/Icon";
 import type { Airport } from "../../types/airport";
 import type { CreateItineraryInput } from "../../types/itinerary";
 
@@ -11,6 +12,7 @@ interface ItineraryFormProps {
 const INITIAL_DURATION_MINUTES = 90;
 
 export function ItineraryForm({ airports, username, onSubmit }: ItineraryFormProps) {
+  const uid = useId();
   const [originId, setOriginId] = useState("");
   const [destinationId, setDestinationId] = useState("");
   const [travelDate, setTravelDate] = useState("");
@@ -45,52 +47,99 @@ export function ItineraryForm({ airports, username, onSubmit }: ItineraryFormPro
     }
   }
 
+  const options = airports.map((a) => (
+    <option key={a.id} value={a.id}>
+      {a.city} · {a.name} ({a.iata_code})
+    </option>
+  ));
+
   return (
-    <form onSubmit={handleSubmit} className="itinerary-form">
-      <label>
-        Salida
-        <select value={originId} onChange={(e) => setOriginId(e.target.value)} required>
-          <option value="" disabled>Selecciona un aeropuerto</option>
-          {airports.map((a) => (
-            <option key={a.id} value={a.id}>{a.name} ({a.iata_code})</option>
-          ))}
-        </select>
-      </label>
+    <form onSubmit={handleSubmit} className="card form" aria-labelledby={`${uid}-title`}>
+      <h3 id={`${uid}-title`}>Nuevo itinerario</h3>
 
-      <label>
-        Llegada
-        <select value={destinationId} onChange={(e) => setDestinationId(e.target.value)} required>
-          <option value="" disabled>Selecciona un aeropuerto</option>
-          {airports.map((a) => (
-            <option key={a.id} value={a.id}>{a.name} ({a.iata_code})</option>
-          ))}
-        </select>
-      </label>
+      <div className="form__grid">
+        <div className="field">
+          <label htmlFor={`${uid}-origin`}>Salida</label>
+          <select
+            id={`${uid}-origin`}
+            className="input"
+            value={originId}
+            onChange={(e) => setOriginId(e.target.value)}
+            required
+          >
+            <option value="" disabled>
+              Selecciona un aeropuerto
+            </option>
+            {options}
+          </select>
+        </div>
 
-      <label>
-        Fecha de viaje
-        <input type="date" value={travelDate} onChange={(e) => setTravelDate(e.target.value)} required />
-      </label>
+        <div className="field">
+          <label htmlFor={`${uid}-destination`}>Llegada</label>
+          <select
+            id={`${uid}-destination`}
+            className={`input${sameAirportSelected ? " input--error" : ""}`}
+            value={destinationId}
+            onChange={(e) => setDestinationId(e.target.value)}
+            aria-invalid={sameAirportSelected ? true : undefined}
+            aria-describedby={sameAirportSelected ? `${uid}-same` : undefined}
+            required
+          >
+            <option value="" disabled>
+              Selecciona un aeropuerto
+            </option>
+            {options}
+          </select>
+        </div>
 
-      <label>
-        Duración (minutos)
-        <input
-          type="number"
-          min={1}
-          max={2880}
-          value={durationMinutes}
-          onChange={(e) => setDurationMinutes(Number(e.target.value))}
-          required
-        />
-      </label>
+        <div className="field">
+          <label htmlFor={`${uid}-date`}>Fecha de viaje</label>
+          <input
+            id={`${uid}-date`}
+            className="input"
+            type="date"
+            value={travelDate}
+            onChange={(e) => setTravelDate(e.target.value)}
+            required
+          />
+        </div>
+
+        <div className="field">
+          <label htmlFor={`${uid}-duration`}>Duración (minutos)</label>
+          <input
+            id={`${uid}-duration`}
+            className="input"
+            type="number"
+            min={1}
+            max={2880}
+            value={durationMinutes}
+            onChange={(e) => setDurationMinutes(Number(e.target.value))}
+            required
+          />
+        </div>
+      </div>
 
       {sameAirportSelected && (
-        <p className="field-error">El aeropuerto de salida y llegada no pueden ser el mismo.</p>
+        <p id={`${uid}-same`} className="field__error" role="alert">
+          <Icon name="alert" size={15} /> El aeropuerto de salida y llegada no pueden ser el mismo.
+        </p>
       )}
-      {submitError && <p className="field-error">{submitError}</p>}
+      {submitError && (
+        <p className="field__error" role="alert">
+          <Icon name="alert" size={15} /> {submitError}
+        </p>
+      )}
 
-      <button type="submit" disabled={isSubmitting || sameAirportSelected}>
-        {isSubmitting ? "Creando…" : "Crear itinerario"}
+      <button type="submit" className="btn btn--primary btn--block" disabled={isSubmitting || sameAirportSelected}>
+        {isSubmitting ? (
+          <>
+            <span className="spinner spinner--sm" aria-hidden="true" /> Creando…
+          </>
+        ) : (
+          <>
+            <Icon name="plus" size={16} /> Crear itinerario
+          </>
+        )}
       </button>
     </form>
   );

@@ -9,6 +9,7 @@ interface UseItinerariesResult {
   error: string | null;
   create: (input: CreateItineraryInput) => Promise<void>;
   remove: (id: string) => Promise<void>;
+  reload: () => Promise<void>;
 }
 
 export function useItineraries(token: string | null): UseItinerariesResult {
@@ -17,7 +18,11 @@ export function useItineraries(token: string | null): UseItinerariesResult {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    if (!token) return;
+    if (!token) {
+      // Sin sesión no debe quedar visible la lista de un usuario anterior.
+      setItineraries([]);
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {
@@ -45,5 +50,5 @@ export function useItineraries(token: string | null): UseItinerariesResult {
     await load();
   };
 
-  return { itineraries, isLoading, error, create, remove };
+  return { itineraries, isLoading, error, create, remove, reload: load };
 }
