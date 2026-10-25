@@ -1,4 +1,4 @@
-FROM ghcr.io/openfaas/classic-watchdog:0.2.5 AS watchdog
+FROM ghcr.io/openfaas/classic-watchdog:0.3.4 AS watchdog
 FROM python:3.11-slim
 COPY --from=watchdog /fwatchdog /usr/bin/fwatchdog
 RUN chmod +x /usr/bin/fwatchdog
