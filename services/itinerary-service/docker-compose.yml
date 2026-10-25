@@ -1,3 +1,4 @@
+
 services:
   itinerary-service:
     build: .
@@ -16,10 +17,10 @@ services:
 
   postgres-itinerary:
     image: postgres:16-alpine
+    env_file: .env
     environment:
       POSTGRES_DB: itinerary
       POSTGRES_USER: itinerary
-      POSTGRES_PASSWORD: itinerary
     volumes:
       - itinerary-db-data:/var/lib/postgresql/data
       - ./migrations:/docker-entrypoint-initdb.d
