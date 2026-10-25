@@ -1,0 +1,264 @@
+/* El mapa es oscuro de forma intencional: resalta rutas y aeropuertos. */
+.map-panel {
+  position: relative;
+  min-height: 460px;
+  height: clamp(520px, calc(100vh - 250px), 820px);
+  overflow: hidden;
+  border: 1px solid #1f3350;
+  border-radius: var(--radius-lg);
+  background: var(--map-ocean);
+  box-shadow: var(--shadow-lg);
+}
+
+.map-canvas {
+  position: absolute;
+  inset: 0;
+  display: grid;
+}
+
+.map-fill {
+  position: absolute;
+  inset: 0;
+  display: grid;
+}
+
+.map-plot {
+  width: 100%;
+  height: 100%;
+}
+
+.map-panel .state {
+  align-self: center;
+  color: var(--color-on-dark);
+}
+
+.map-panel .state__icon {
+  background: rgb(255 255 255 / 8%);
+  color: var(--color-sky);
+}
+
+.map-panel .state--error .state__icon {
+  background: rgb(185 28 28 / 25%);
+  color: #fca5a5;
+}
+
+.map-panel .state__text {
+  color: var(--color-on-dark-muted);
+}
+
+.map-panel .btn--secondary {
+  background: transparent;
+  border-color: rgb(255 255 255 / 25%);
+  color: var(--color-on-dark);
+}
+
+.map-empty {
+  align-self: center;
+  justify-self: center;
+  color: var(--color-on-dark-muted);
+}
+
+.map-controls {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.map-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0.4rem 0.75rem;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: var(--radius-pill);
+  background: rgb(11 18 32 / 82%);
+  color: var(--color-on-dark);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: background var(--transition), border-color var(--transition);
+}
+
+.map-chip:hover:not(:disabled) {
+  background: rgb(20 36 58 / 92%);
+  border-color: var(--color-sky);
+}
+
+.map-chip:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+.map-chip:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.map-legend {
+  position: absolute;
+  left: var(--space-3);
+  bottom: var(--space-3);
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: var(--radius-md);
+  background: rgb(11 18 32 / 82%);
+  color: var(--color-on-dark);
+  font-size: var(--text-xs);
+  backdrop-filter: blur(6px);
+}
+
+.map-legend li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.legend-mark {
+  display: inline-block;
+  flex: none;
+  width: 18px;
+  height: 10px;
+}
+
+.legend-mark--airport {
+  width: 8px;
+  height: 8px;
+  margin: 0 5px;
+  border-radius: 50%;
+  background: #8aa4c4;
+}
+
+.legend-mark--route {
+  height: 2px;
+  background: var(--map-route);
+}
+
+.legend-mark--active {
+  height: 3px;
+  border-radius: 2px;
+  background: #fff;
+  box-shadow: 0 0 6px var(--map-route);
+}
+
+.legend-mark--plane {
+  width: 10px;
+  height: 12px;
+  margin: 0 4px;
+  background: #cbd8ea;
+  clip-path: polygon(50% 0, 100% 100%, 50% 78%, 0 100%);
+}
+
+.legend-mark--origin {
+  width: 11px;
+  height: 11px;
+  margin: 0 3.5px;
+  border-radius: 50%;
+  background: var(--color-sky);
+  border: 2px solid var(--color-night);
+  outline: 1px solid rgb(255 255 255 / 35%);
+}
+
+.legend-mark--destination {
+  width: 10px;
+  height: 10px;
+  margin: 0 4px;
+  background: #fff;
+  transform: rotate(45deg);
+}
+
+.map-note {
+  position: absolute;
+  right: var(--space-3);
+  bottom: var(--space-3);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: min(360px, 60%);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid rgb(251 191 36 / 40%);
+  border-radius: var(--radius-md);
+  background: rgb(11 18 32 / 88%);
+  color: #fcd34d;
+  font-size: var(--text-xs);
+}
+
+.map-note--top {
+  top: 52px;
+  right: var(--space-3);
+  bottom: auto;
+}
+
+.map-note svg {
+  flex: none;
+}
+
+/* Barra de zoom de Plotly alineada con el tema oscuro */
+.map-plot .modebar {
+  top: var(--space-3) !important;
+  right: var(--space-3) !important;
+}
+
+.map-plot .modebar-group {
+  padding: 0 !important;
+  background: rgb(11 18 32 / 82%) !important;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: var(--radius-md);
+}
+
+.map-plot .modebar-btn {
+  padding: 6px 7px !important;
+  font-size: 18px !important;
+}
+
+.map-plot .modebar-btn .icon path {
+  fill: #cbd8ea !important;
+}
+
+.map-plot .modebar-btn:hover .icon path {
+  fill: #fff !important;
+}
+
+@media (max-width: 1100px) {
+  .map-panel {
+    height: clamp(420px, 62vh, 640px);
+  }
+}
+
+@media (max-width: 720px) {
+  .map-panel {
+    min-height: 400px;
+    height: 68vh;
+  }
+
+  .map-chip {
+    padding: 0.35rem 0.6rem;
+    font-size: var(--text-xs);
+  }
+
+  .map-legend {
+    left: var(--space-2);
+    right: var(--space-2);
+    bottom: var(--space-2);
+    flex-direction: row;
+    flex-wrap: wrap;
+    padding: var(--space-2) var(--space-3);
+    gap: var(--space-1) var(--space-3);
+  }
+
+  .map-note {
+    left: var(--space-2);
+    right: var(--space-2);
+    bottom: 76px;
+    max-width: none;
+  }
+}
