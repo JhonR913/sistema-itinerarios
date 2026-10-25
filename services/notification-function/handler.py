@@ -13,7 +13,7 @@ import psycopg2
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("send-notification-function")
 
-DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://notif:notif@postgres-notification:5432/notification")
+DATABASE_URL = os.environ["DATABASE_URL"]
 
 
 def handle(event, context):

@@ -38,7 +38,7 @@ export function useAirports(): UseAirportsResult {
       }
     }
 
-    load();
+    void load();
     return () => {
       cancelled = true;
     };

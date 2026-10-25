@@ -1,14 +1,18 @@
-FROM ghcr.io/openfaas/classic-watchdog:0.3.4 AS watchdog
+
 FROM python:3.11-slim
-COPY --from=watchdog /fwatchdog /usr/bin/fwatchdog
-RUN chmod +x /usr/bin/fwatchdog
 
 WORKDIR /home/app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY handler.py .
 
-ENV fprocess="python3 handler.py"
-ENV DATABASE_URL=""
-EXPOSE 8080
-CMD ["fwatchdog"]
+COPY requirements.txt .
+RUN pip install --no-cache-dir --only-binary=:all: -r requirements.txt
+
+RUN useradd --create-home --uid 10001 appuser \
+    && chown -R appuser:appuser /home/app
+
+COPY --chown=appuser:appuser handler.py consumer.py ./
+
+ENV PYTHONUNBUFFERED=1
+
+USER appuser
+
+CMD ["python", "consumer.py"]

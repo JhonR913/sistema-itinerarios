@@ -1,14 +1,17 @@
-from pydantic_settings import BaseSettings
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    database_url: str = "postgresql://itinerary:itinerary@postgres-itinerary:5432/itinerary"
-    rabbitmq_url: str = "amqp://guest:guest@rabbitmq:5672/"
+    database_url: str
+    rabbitmq_url: str
     airport_service_url: str = "http://airport-service:8000"
-    jwt_secret: str = "CHANGE_ME_IN_ENV"
+    jwt_secret: str
 
-    class Config:
-        env_file = ".env"
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        extra="ignore",
+    )
 
 
 settings = Settings()
