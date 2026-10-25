@@ -1,0 +1,32 @@
+services:
+  airport-service:
+    build: .
+    env_file: .env
+    ports:
+      - "8001:8000"
+    depends_on:
+      - redis-airport
+      - postgres-airport
+    networks: [itinerarios-net]
+
+  redis-airport:
+    image: redis:7-alpine
+    networks: [itinerarios-net]
+
+  postgres-airport:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: airport
+      POSTGRES_USER: airport
+      POSTGRES_PASSWORD: airport
+    volumes:
+      - airport-db-data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    networks: [itinerarios-net]
+
+volumes:
+  airport-db-data:
+
+networks:
+  itinerarios-net:
+    external: true
