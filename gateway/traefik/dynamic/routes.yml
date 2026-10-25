@@ -1,0 +1,38 @@
+http:
+  middlewares:
+    rate-limit-default:
+      rateLimit:
+        average: 20
+        burst: 40
+
+  routers:
+    auth-router:
+      rule: "PathPrefix(`/api/auth`)"
+      service: auth-stub
+      middlewares: ["rate-limit-default"]
+
+    airport-router:
+      rule: "PathPrefix(`/api/airports`)"
+      service: airport-service
+      middlewares: ["rate-limit-default"]
+
+    itinerary-router:
+      rule: "PathPrefix(`/api/itineraries`)"
+      service: itinerary-service
+      middlewares: ["rate-limit-default"]
+
+  services:
+    auth-stub:
+      loadBalancer:
+        servers:
+          - url: "http://auth-stub:8000"
+
+    airport-service:
+      loadBalancer:
+        servers:
+          - url: "http://airport-service:8000"
+
+    itinerary-service:
+      loadBalancer:
+        servers:
+          - url: "http://itinerary-service:8000"

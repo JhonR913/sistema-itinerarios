@@ -1,0 +1,14 @@
+# Orquestador raiz (monorepo). IMPORTANTE: auth-stub e itinerary-service
+# deben compartir el mismo JWT_SECRET en sus .env (uno emite, el otro
+# valida). El frontend usa VITE_API_BASE_URL apuntando al Gateway.
+#
+# Uso:
+#   docker network create itinerarios-net   # una sola vez
+#   docker compose up -d --build
+include:
+  - gateway/traefik/docker-compose.yml
+  - services/auth-stub/docker-compose.yml
+  - services/airport-service/docker-compose.yml
+  - services/itinerary-service/docker-compose.yml
+  - services/notification-function/docker-compose.yml
+  - frontend/docker-compose.yml
