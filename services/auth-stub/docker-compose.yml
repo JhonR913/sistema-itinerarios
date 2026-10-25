@@ -1,0 +1,11 @@
+services:
+  auth-stub:
+    build: .
+    env_file: .env
+    ports:
+      - "8003:8000"
+    networks: [itinerarios-net]
+
+networks:
+  itinerarios-net:
+    external: true

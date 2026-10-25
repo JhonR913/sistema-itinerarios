@@ -1,0 +1,10 @@
+services:
+  frontend:
+    build: .
+    ports:
+      - "5173:80"
+    networks: [itinerarios-net]
+
+networks:
+  itinerarios-net:
+    external: true
