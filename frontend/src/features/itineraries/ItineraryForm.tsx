@@ -47,8 +47,8 @@ export function ItineraryForm({ airports, username, itineraries, onSubmit }: Iti
     }
   }, [origin, destination, durationEdited]);
 
-  const departureMs = departure ? Date.parse(toDepartureIso(departure)) : NaN;
-  const arrivalMs = Number.isFinite(departureMs) ? departureMs + durationMinutes * 60_000 : NaN;
+  const departureMs = departure ? Date.parse(toDepartureIso(departure)) : Number.NaN;
+  const arrivalMs = Number.isFinite(departureMs) ? departureMs + durationMinutes * 60_000 : Number.NaN;
   const isPast = Number.isFinite(departureMs) && departureMs <= Date.now();
 
   // Reglas de agenda: aviso inmediato (el servidor decide en definitiva).

@@ -91,12 +91,12 @@ export function describeConflict(candidate: Candidate, itineraries: Itinerary[],
     }
   }
   const before = others.filter((o) => o.arr + buf <= start);
-  const prev = before.length ? before.reduce((a, b) => (b.arr > a.arr ? b : a)) : null;
+  const prev = before.length ? before.reduce((a, b) => (b.arr > a.arr ? b : a), before[0]) : null;
   if (prev && prev.it.destination.airport_id !== candidate.originId) {
     return `Tu vuelo anterior llega a ${prev.it.destination.city} (${fmt(prev.arr)}); desde ahí es donde puedes salir.`;
   }
   const after = others.filter((o) => end + buf <= o.dep);
-  const next = after.length ? after.reduce((a, b) => (b.dep < a.dep ? b : a)) : null;
+  const next = after.length ? after.reduce((a, b) => (b.dep < a.dep ? b : a), after[0]) : null;
   if (next && next.it.origin.airport_id !== candidate.destinationId) {
     return `Tu siguiente vuelo sale de ${next.it.origin.city} (${fmt(next.dep)}); este vuelo debe terminar allí.`;
   }
@@ -114,7 +114,7 @@ export interface Availability {
 /** Dónde estarás tras tu último vuelo y desde cuándo puedes volver a salir. */
 export function nextAvailability(itineraries: Itinerary[]): Availability | null {
   if (itineraries.length === 0) return null;
-  const last = itineraries.reduce((a, b) => (Date.parse(b.arrival_at) > Date.parse(a.arrival_at) ? b : a));
+  const last = itineraries.reduce((a, b) => (Date.parse(b.arrival_at) > Date.parse(a.arrival_at) ? b : a), itineraries[0]);
   return {
     airportId: last.destination.airport_id,
     city: last.destination.city,

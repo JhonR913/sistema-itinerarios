@@ -6,11 +6,18 @@ recordatorios), para poder probar la propagacion de identidad
 
 OJO: el correo NO se verifica (no hay confirmacion de propiedad): cualquiera
 puede declarar el correo de otra persona. Es una limitacion conocida del stub."""
-import re
 from dataclasses import dataclass
 from typing import Optional
 
-_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+def _is_valid_email(value: str) -> bool:
+    """usuario@dominio.tld sin espacios. Sin expresion regular a proposito: el
+    patron clasico con dos grupos "cualquier cosa menos @ y espacio" separados por
+    un punto tiene backtracking super-lineal (ReDoS)."""
+    local, at, domain = value.partition("@")
+    if not at or not local or "@" in domain or any(c.isspace() for c in value):
+        return False
+    return "." in domain[1:-1]   # un punto que no sea el primero ni el ultimo del dominio
 
 
 @dataclass(frozen=True)
@@ -24,5 +31,5 @@ class UsernameClaim:
         if len(self.username) > 120:
             raise ValueError("El nombre de usuario es demasiado largo")
         if self.email is not None:
-            if len(self.email) > 254 or not _EMAIL_RE.match(self.email):
+            if len(self.email) > 254 or not _is_valid_email(self.email):
                 raise ValueError("El correo no tiene un formato valido")

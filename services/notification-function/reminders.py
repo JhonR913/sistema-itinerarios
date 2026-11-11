@@ -15,7 +15,6 @@ from datetime import date, datetime, time, timedelta, timezone
 from typing import Optional
 from zoneinfo import ZoneInfo
 
-EMAIL_RE = re.compile(r"^[^@\s]{1,64}@[^@\s]+\.[^@\s]+$")
 IATA_RE = re.compile(r"^[A-Za-z0-9/]{2,4}$")
 
 
@@ -47,8 +46,16 @@ def is_past_trip(travel_date: date, tz_name: str, now: Optional[datetime] = None
     return travel_date < now.astimezone(ZoneInfo(tz_name)).date()
 
 
+def is_valid_email(value: str) -> bool:
+    """usuario@dominio.tld sin espacios, usuario <= 64. Sin regex (evita backtracking/ReDoS)."""
+    local, at, domain = value.partition("@")
+    if not at or not 1 <= len(local) <= 64 or "@" in domain or any(c.isspace() for c in value):
+        return False
+    return "." in domain[1:-1]
+
+
 def valid_email(value) -> Optional[str]:
-    return value if isinstance(value, str) and len(value) <= 254 and EMAIL_RE.match(value) else None
+    return value if isinstance(value, str) and len(value) <= 254 and is_valid_email(value) else None
 
 
 def initial_status(email: Optional[str], travel_date: date, tz_name: str, now: Optional[datetime] = None,
