@@ -12,7 +12,15 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 FORCE=0; [[ "${1:-}" == "--force" ]] && FORCE=1
-rand() { python3 -c 'import secrets; print(secrets.token_hex(24))'; }
+# Secreto aleatorio de 48 caracteres hex. No depende de Python: usa openssl
+# (incluido en Git Bash/WSL/Linux/macOS) o, si no esta, /dev/urandom.
+rand() {
+  if command -v openssl >/dev/null 2>&1; then
+    openssl rand -hex 24
+  else
+    head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n'
+  fi
+}
 
 # Un secreto por token. Si ya existe un .env, se reutiliza su valor para no
 # romper volumenes de bases de datos ya inicializados con esa clave.
