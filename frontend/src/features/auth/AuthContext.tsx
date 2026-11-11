@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { authApi } from "../../api/authApi";
+import { AuthContext } from "./authContextValue";
 
 /**
  * El token vive SOLO en memoria (estado de React), nunca en localStorage
@@ -8,41 +9,27 @@ import { authApi } from "../../api/authApi";
  * la pagina; para este alcance (Nivel 1) es una decision aceptada, no un
  * descuido — queda documentada en docs/matriz-estado.md.
  */
-interface AuthContextValue {
-  token: string | null;
-  username: string | null;
-  login: (username: string) => Promise<void>;
-  logout: () => void;
-}
-
-const AuthContext = createContext<AuthContextValue | undefined>(undefined);
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
 
-  const login = async (usernameInput: string) => {
-    const response = await authApi.issueToken(usernameInput);
+  const login = async (usernameInput: string, emailInput?: string) => {
+    const response = await authApi.issueToken(usernameInput, emailInput);
     setToken(response.access_token);
     setUsername(usernameInput);
+    setEmail(emailInput?.trim() ? emailInput.trim() : null);
   };
 
   const logout = () => {
     setToken(null);
     setUsername(null);
+    setEmail(null);
   };
 
   return (
-    <AuthContext.Provider value={{ token, username, login, logout }}>
+    <AuthContext.Provider value={{ token, username, email, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth(): AuthContextValue {
-  const ctx = useContext(AuthContext);
-  if (!ctx) {
-    throw new Error("useAuth debe usarse dentro de <AuthProvider>");
-  }
-  return ctx;
 }

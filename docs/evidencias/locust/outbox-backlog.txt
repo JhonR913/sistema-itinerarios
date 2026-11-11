@@ -1,0 +1,3 @@
+# 2026-11-04 tras el perfil itinerary-alta
+t=0 s: PENDING=41 PUBLISHED=10479
+t=15 s: PENDING=0 PUBLISHED=10520

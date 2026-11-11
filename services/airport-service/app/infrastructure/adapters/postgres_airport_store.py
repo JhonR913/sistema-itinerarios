@@ -12,7 +12,7 @@ from app.domain.models import Airport
 
 class PostgresAirportStore:
     def __init__(self, database_url: str):
-        self._engine = create_engine(database_url)
+        self._engine = create_engine(database_url, pool_pre_ping=True, pool_timeout=5, connect_args={"connect_timeout": 3, "options": "-c statement_timeout=5000"})
 
     def upsert_many(self, airports: List[Airport]) -> None:
         if not airports:

@@ -1,0 +1,294 @@
+asyncapi: 3.0.0
+info:
+  title: Eventos del Sistema de Itinerarios Personales
+  version: 1.0.0
+  description: |
+    Contrato de los mensajes que circulan por RabbitMQ. Describe SOLO lo que
+    el código publica y consume hoy (un evento: `ItineraryCreatedEvent`).
+
+    **Productor:** `outbox-worker` (itinerary-service) — relay del patrón
+    *Transactional Outbox*.
+    **Consumidor:** `send-notification-function` (notification-function).
+
+    ### Garantías de entrega
+    - **At-least-once.** El evento se guarda en la tabla `outbox` en la MISMA
+      transacción que el itinerario. El relay lo publica con *publisher
+      confirms* + `mandatory` y solo marca `PUBLISHED` tras el ack del broker.
+      Si el relay cae entre el confirm y el UPDATE, el mensaje se reenvía.
+    - **Idempotencia.** El consumidor inserta en `notification_history` con
+      `INSERT ... ON CONFLICT (itinerary_id) DO NOTHING` sobre un índice
+      ÚNICO; una reentrega (o dos consumidores simultáneos) produce una sola fila.
+    - **Orden:** el relay publica por `outbox.id` ascendente, pero con varias
+      réplicas del relay o del consumidor no se garantiza orden global (no se
+      necesita: cada evento es independiente).
+
+    ### Orden de eventos y recordatorios
+    `message_id` (AMQP) = id del outbox, creciente. El consumidor aplica un evento sobre un
+    recordatorio solo si su id es MAYOR que el último aplicado (`reminders.last_event_id`):
+    un Updated viejo se ignora y un Deleted que llega antes que el Created deja una
+    «lápida» CANCELLED que el Created tardío no puede revivir. Eventos sin `message_id`
+    (salvo Created) o con tipo desconocido van a la DLQ.
+
+    ### Manejo de errores
+    - *Mensaje inválido* (JSON malformado, faltan campos, `itinerary_id` que no
+      es UUID): el consumidor hace `basic_reject(requeue=false)` y RabbitMQ lo
+      enruta a la dead-letter queue `itinerary.events.dlq`. No se reintenta.
+    - *Error transitorio* (p. ej. PostgreSQL caído): pausa de 3 s y
+      `basic_nack(requeue=true)`.
+    - *Broker caído:* la API de itinerarios sigue aceptando peticiones; los
+      eventos quedan `PENDING` en `outbox` y el relay reconecta (backoff 5 s).
+      El consumidor también reconecta.
+    - *Reintentos del relay:* un evento no serializable se marca `FAILED`
+      tras 10 intentos (`outbox.attempts`, `outbox.last_error`).
+
+    ### Topología declarada por AMBOS lados (argumentos idénticos)
+    | Recurso | Tipo | Detalle |
+    |---|---|---|
+    | `itinerary.events` | queue durable | `x-dead-letter-exchange=itinerary.dlx`, `x-dead-letter-routing-key=itinerary.events.dlq` |
+    | `itinerary.dlx` | exchange direct durable | recibe los rechazados |
+    | `itinerary.events.dlq` | queue durable | enlazada a `itinerary.dlx` con su propio nombre como routing key |
+
+    El productor publica al *default exchange* con routing key `itinerary.events`.
+  contact:
+    name: Equipo del proyecto
+defaultContentType: application/json
+
+servers:
+  local:
+    host: rabbitmq:5672
+    protocol: amqp
+    description: >-
+      Broker del Docker Compose (red `itinerarios-net`). Usuario y contraseña
+      propios (`rabbitmq.env`), no `guest/guest`. Consola de administración solo
+      en 127.0.0.1:15672.
+
+channels:
+  itineraryEvents:
+    address: itinerary.events
+    description: Cola durable con TODOS los eventos de itinerarios; el tipo viaja en la propiedad AMQP `type`.
+    messages:
+      itineraryCreatedEvent:
+        $ref: '#/components/messages/ItineraryCreatedEvent'
+      itineraryUpdatedEvent:
+        $ref: '#/components/messages/ItineraryUpdatedEvent'
+      itineraryDeletedEvent:
+        $ref: '#/components/messages/ItineraryDeletedEvent'
+    bindings:
+      amqp:
+        is: queue
+        queue:
+          name: itinerary.events
+          durable: true
+          exclusive: false
+          autoDelete: false
+          vhost: /
+  itineraryEventsDlq:
+    address: itinerary.events.dlq
+    description: >-
+      Dead-letter queue. Contiene mensajes rechazados por el consumidor por
+      ser inválidos (no se reintentan). Requiere revisión humana.
+    messages:
+      deadLetteredMessage:
+        $ref: '#/components/messages/DeadLetteredMessage'
+    bindings:
+      amqp:
+        is: queue
+        queue:
+          name: itinerary.events.dlq
+          durable: true
+          exclusive: false
+          autoDelete: false
+          vhost: /
+
+operations:
+  publishItineraryCreated:
+    action: send
+    channel:
+      $ref: '#/channels/itineraryEvents'
+    summary: El relay del outbox publica los eventos de itinerario (created, updated, deleted).
+    description: >-
+      Productor: `outbox-worker` (`services/itinerary-service/app/infrastructure/adapters/outbox_worker.py`).
+      Origen del evento: caso de uso `CreateItinerary` (POST /api/itineraries).
+    messages:
+      - $ref: '#/channels/itineraryEvents/messages/itineraryCreatedEvent'
+      - $ref: '#/channels/itineraryEvents/messages/itineraryUpdatedEvent'
+      - $ref: '#/channels/itineraryEvents/messages/itineraryDeletedEvent'
+  consumeItineraryCreated:
+    action: receive
+    channel:
+      $ref: '#/channels/itineraryEvents'
+    summary: La función de notificación procesa los tres eventos.
+    description: >-
+      Consumidor: `send-notification-function` (`services/notification-function/consumer.py`,
+      `handler.py`). `prefetch_count=1`, ack manual. Efectos: Created → fila en
+      `notification_history` (canal `log-simulado`) y recordatorio en `reminders`;
+      Updated → reprograma el recordatorio; Deleted → lo cancela y borra el correo.
+    messages:
+      - $ref: '#/channels/itineraryEvents/messages/itineraryCreatedEvent'
+      - $ref: '#/channels/itineraryEvents/messages/itineraryUpdatedEvent'
+      - $ref: '#/channels/itineraryEvents/messages/itineraryDeletedEvent'
+
+components:
+  messages:
+    ItineraryCreatedEvent:
+      name: ItineraryCreatedEvent
+      title: Itinerario creado
+      summary: Se creó un itinerario del usuario.
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/ItineraryCreatedPayload'
+      bindings:
+        amqp:
+          contentEncoding: utf-8
+          messageType: ItineraryCreatedEvent
+      traits:
+        - $ref: '#/components/messageTraits/amqpProperties'
+      examples:
+        - name: Bogotá a Medellín
+          payload:
+            itinerary_id: 6f1c1e5e-6f0f-4c6d-9f3b-2f6d0a1b2c3d
+            nombre_usuario: jhon
+            origin: BOG
+            destination: MDE
+            origin_city: Bogotá
+            destination_city: Rionegro
+            travel_date: '2026-12-01'
+            departure_at: '2026-12-01T11:00:00+00:00'
+            arrival_at: '2026-12-01T12:15:00+00:00'
+          headers: {}
+    ItineraryUpdatedEvent:
+      name: ItineraryUpdatedEvent
+      title: Itinerario actualizado
+      summary: Cambió la ruta, la fecha o la hora de un itinerario.
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/ItineraryUpdatedPayload'
+      bindings:
+        amqp:
+          contentEncoding: utf-8
+          messageType: ItineraryUpdatedEvent
+      traits:
+        - $ref: '#/components/messageTraits/amqpProperties'
+      examples:
+        - name: Nueva fecha y destino
+          payload:
+            itinerary_id: 6f1c1e5e-6f0f-4c6d-9f3b-2f6d0a1b2c3d
+            origin: BOG
+            destination: CTG
+            origin_city: Bogotá
+            destination_city: Cartagena
+            travel_date: '2026-12-09'
+            departure_at: '2026-12-09T14:30:00+00:00'
+            arrival_at: '2026-12-09T16:00:00+00:00'
+    ItineraryDeletedEvent:
+      name: ItineraryDeletedEvent
+      title: Itinerario eliminado
+      summary: Se eliminó un itinerario (cancela su recordatorio).
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/ItineraryDeletedPayload'
+      bindings:
+        amqp:
+          contentEncoding: utf-8
+          messageType: ItineraryDeletedEvent
+      traits:
+        - $ref: '#/components/messageTraits/amqpProperties'
+      examples:
+        - name: Eliminado
+          payload:
+            itinerary_id: 6f1c1e5e-6f0f-4c6d-9f3b-2f6d0a1b2c3d
+    DeadLetteredMessage:
+      name: DeadLetteredMessage
+      title: Mensaje rechazado
+      summary: >-
+        Cualquier cuerpo que el consumidor no pudo validar. RabbitMQ añade la
+        cabecera `x-death` con el motivo (`rejected`) y la cola de origen.
+      contentType: application/octet-stream
+      payload:
+        type: string
+        description: Cuerpo original sin modificar (puede no ser JSON).
+        examples: ['esto-no-es-json']
+
+  messageTraits:
+    amqpProperties:
+      description: >-
+        Propiedades AMQP que fija el relay en cada publicación (no van en el
+        cuerpo): `delivery_mode=2` (persistente), `content_type=application/json`,
+        `type` = nombre del evento, `message_id` = id de la fila del outbox,
+        `timestamp`. Se publica con `mandatory=true` y publisher confirms.
+
+  schemas:
+    ItineraryCreatedPayload:
+      type: object
+      required: [itinerary_id, nombre_usuario, origin, destination, travel_date]
+      additionalProperties: false
+      properties:
+        itinerary_id:
+          type: string
+          format: uuid
+          description: Id del itinerario (agregado). Clave de idempotencia del consumidor.
+        nombre_usuario:
+          type: string
+          minLength: 1
+          maxLength: 120
+          description: Nombre indicado por el usuario al crear el itinerario.
+        origin:
+          type: string
+          minLength: 3
+          maxLength: 4
+          description: Código IATA del aeropuerto de salida.
+          examples: [BOG]
+        destination:
+          type: string
+          minLength: 3
+          maxLength: 4
+          description: Código IATA del aeropuerto de llegada (distinto de `origin`).
+          examples: [MDE]
+        travel_date:
+          type: string
+          format: date
+          description: Fecha local (America/Bogota) de la salida (YYYY-MM-DD).
+        origin_city:
+          type: string
+          maxLength: 120
+          description: Ciudad de salida (para el texto del correo). Opcional.
+        destination_city:
+          type: string
+          maxLength: 120
+          description: Ciudad de llegada. Opcional.
+        departure_at:
+          type: string
+          format: date-time
+          description: >-
+            Instante de salida (ISO 8601 con zona, en UTC). OPCIONAL por compatibilidad: si
+            falta, el recordatorio se calcula a partir de `travel_date` (00:00 America/Bogota).
+            Si está, el recordatorio sale REMINDER_LEAD_HOURS antes de la salida real.
+        arrival_at:
+          type: string
+          format: date-time
+          description: Instante de llegada estimado (salida + duración). Opcional.
+        email:
+          type: string
+          maxLength: 254
+          description: >-
+            OPCIONAL. Correo tomado del claim `email` del JWT (no verificado). Solo está
+            presente si el usuario lo indicó al iniciar sesión; habilita el recordatorio.
+    ItineraryUpdatedPayload:
+      type: object
+      required: [itinerary_id, origin, destination, travel_date]
+      additionalProperties: false
+      properties:
+        itinerary_id: {type: string, format: uuid}
+        origin: {type: string, minLength: 3, maxLength: 4, description: Código IATA vigente tras el cambio.}
+        destination: {type: string, minLength: 3, maxLength: 4}
+        travel_date: {type: string, format: date}
+        origin_city: {type: string, maxLength: 120}
+        destination_city: {type: string, maxLength: 120}
+        departure_at: {type: string, format: date-time, description: Instante de salida (ISO 8601 con zona). Opcional.}
+        arrival_at: {type: string, format: date-time, description: Instante de llegada estimado. Opcional.}
+    ItineraryDeletedPayload:
+      type: object
+      required: [itinerary_id]
+      additionalProperties: false
+      properties:
+        itinerary_id: {type: string, format: uuid}

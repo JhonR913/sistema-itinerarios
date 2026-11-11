@@ -4,23 +4,35 @@ Epic,Gestion de Itinerarios,Gestion de Itinerarios,Epica: CRUD de itinerarios co
 Epic,Notificaciones Asincronas,Notificaciones Asincronas,Epica: eventos y funciones serverless,,,,Hecho
 Epic,Seguridad y Plataforma,Seguridad y Plataforma,Epica: JWT Gateway resiliencia y seguridad,,,,Hecho
 Epic,DevOps,DevOps,Epica: CI/CD calidad y despliegue,,,,En progreso
-Story,Consulta de Aeropuertos,US-001 Listar aeropuertos disponibles,"Como usuario quiero consultar el listado de aeropuertos colombianos disponibles para elegir origen y destino",Alta,3,backend;airport-service,Hecho
-Story,Consulta de Aeropuertos,US-002 Ver aeropuertos en un mapa interactivo,"Como usuario quiero visualizar los aeropuertos en un mapa Plotly para ubicarlos geograficamente",Alta,5,frontend,Hecho
-Story,Consulta de Aeropuertos,US-003 Consultar detalle de un aeropuerto,"Como usuario quiero consultar el detalle de un aeropuerto por ID",Media,2,backend;airport-service,Hecho
-Story,Gestion de Itinerarios,US-004 Crear un itinerario,"Como usuario quiero crear un itinerario validando ambos aeropuertos",Alta,8,backend;itinerary-service,Hecho
-Story,Gestion de Itinerarios,US-005 Consultar mis itinerarios,"Como usuario quiero consultar listado y detalle de mis itinerarios",Alta,3,backend;itinerary-service,Hecho
-Story,Gestion de Itinerarios,US-006 Actualizar un itinerario,"Como usuario quiero modificar un itinerario existente",Media,5,backend;itinerary-service,Hecho
-Story,Gestion de Itinerarios,US-007 Eliminar un itinerario,"Como usuario quiero eliminar un itinerario existente",Media,2,backend;itinerary-service,Hecho
-Story,Notificaciones Asincronas,US-008 Recibir notificacion al crear itinerario,"Como usuario quiero recibir confirmacion cuando creo un itinerario",Alta,5,serverless;rabbitmq,Hecho
-Story,Notificaciones Asincronas,US-009 Ver reporte agregado de itinerarios,"Como interesado quiero un reporte agregado bajo demanda",Baja,3,serverless,Por hacer
-Story,Seguridad y Plataforma,US-010 Autenticarme para usar el sistema,"Como usuario quiero obtener un JWT a partir de mi nombre de usuario",Media,3,security;gateway,Hecho
-Story,Seguridad y Plataforma,US-011 Resiliencia ante caida de API externa,"Como usuario quiero seguir usando el sistema aunque API Colombia falle",Alta,8,resilience;airport-service,Hecho
-Story,DevOps,DEVOPS-001 Pipeline CI con pruebas unitarias,"Configurar GitHub Actions para correr pytest en cada servicio",Alta,5,devops,Por hacer
-Story,DevOps,DEVOPS-002 Integracion SonarQube,"Configurar analisis de calidad de codigo en el pipeline",Alta,3,devops,Por hacer
-Story,DevOps,DEVOPS-003 Pruebas de carga,"Configurar Locust para endpoints criticos",Media,5,devops;testing,Hecho
-Story,DevOps,DEVOPS-004 Documentacion Swagger,"Exponer OpenAPI/Swagger funcional en cada servicio",Alta,2,devops,Hecho
-Story,DevOps,DEVOPS-005 Despliegue continuo,"Configurar build y push de imagenes en main",Media,5,devops,Por hacer
-Story,DevOps,DEVOPS-006 Hardening de seguridad (guia 20 fallas),"Aplicar CLAUDE.md hook PreToolUse y GitHub Action de revision de seguridad",Alta,5,security;devops,Hecho
-Story,DevOps,DEVOPS-007 Verificar docker compose up end-to-end,"Correr el sistema completo en una maquina con Docker y confirmar que los 6 servicios + RabbitMQ + Postgres levantan",Alta,3,devops;docker,Por hacer
+Story,Consulta de Aeropuertos,US-001 Listar aeropuertos disponibles,Como usuario quiero consultar el listado de aeropuertos colombianos disponibles para elegir origen y destino,Alta,3,backend;airport-service,Hecho
+Story,Consulta de Aeropuertos,US-002 Ver aeropuertos en un mapa interactivo,Como usuario quiero visualizar los aeropuertos en un mapa Plotly para ubicarlos geograficamente,Alta,5,frontend,Hecho
+Story,Consulta de Aeropuertos,US-003 Consultar detalle de un aeropuerto,Como usuario quiero consultar el detalle de un aeropuerto por ID,Media,2,backend;airport-service,Hecho
+Story,Gestion de Itinerarios,US-004 Crear un itinerario,Como usuario quiero crear un itinerario validando ambos aeropuertos,Alta,8,backend;itinerary-service,Hecho
+Story,Gestion de Itinerarios,US-005 Consultar mis itinerarios,Como usuario quiero consultar listado y detalle de mis itinerarios,Alta,3,backend;itinerary-service,Hecho
+Story,Gestion de Itinerarios,US-006 Actualizar un itinerario,Como usuario quiero modificar un itinerario existente,Media,5,backend;itinerary-service,Hecho
+Story,Gestion de Itinerarios,US-007 Eliminar un itinerario,Como usuario quiero eliminar un itinerario existente,Media,2,backend;itinerary-service,Hecho
+Story,Notificaciones Asincronas,US-008 Recibir notificacion al crear itinerario,Como usuario quiero recibir confirmacion cuando creo un itinerario. Criterios: el evento se guarda en la misma transaccion que el itinerario; se publica con confirm; el consumidor registra 1 fila en notification_history aunque el mensaje se reentregue; los mensajes invalidos van a la DLQ.,Alta,5,serverless;rabbitmq,Hecho
+Story,Notificaciones Asincronas,US-009 Ver reporte agregado de itinerarios,Como interesado quiero un reporte agregado bajo demanda,Baja,3,serverless,Por hacer
+Story,Seguridad y Plataforma,US-010 Autenticarme para usar el sistema,Como usuario quiero obtener un JWT a partir de mi nombre de usuario,Media,3,security;gateway,Hecho
+Story,Seguridad y Plataforma,US-011 Resiliencia ante caida de API externa,Como usuario quiero seguir usando el sistema aunque API Colombia falle,Alta,8,resilience;airport-service,Hecho
+Story,DevOps,DEVOPS-001 Pipeline CI con pruebas unitarias,Configurar GitHub Actions para correr pytest en cada servicio,Alta,5,devops,En progreso
+Story,DevOps,DEVOPS-002 Integracion SonarQube,Configurar analisis de calidad de codigo en el pipeline,Alta,3,devops,En progreso
+Story,DevOps,DEVOPS-003 Pruebas de carga,"Configurar Locust para endpoints criticos. Criterios: scripts con flujo real (login, aeropuertos, CRUD); ejecucion headless con reporte CSV/HTML en docs/evidencias/locust.",Media,5,devops;testing,Hecho
+Story,DevOps,DEVOPS-004 Documentacion Swagger,Exponer OpenAPI/Swagger funcional en cada servicio,Alta,2,devops,Hecho
+Story,DevOps,DEVOPS-005 Despliegue continuo,Configurar build y push de imagenes en main,Media,5,devops,Por hacer
+Story,DevOps,DEVOPS-006 Hardening de seguridad (guia 20 fallas),Aplicar CLAUDE.md hook PreToolUse y GitHub Action de revision de seguridad,Alta,5,security;devops,Hecho
+Story,DevOps,DEVOPS-007 Verificar docker compose up end-to-end,Correr el sistema completo en una maquina con Docker y confirmar que los 6 servicios + RabbitMQ + Postgres levantan,Alta,3,devops;docker,En progreso
 Story,DevOps,DEVOPS-008 Crear repositorio remoto y proteger ramas,"Subir el repo a GitHub, configurar main/develop protegidas",Alta,2,devops;github,Por hacer
-Story,DevOps,DEVOPS-009 Importar backlog a Jira real,"Crear proyecto Scrum e importar jira/backlog.csv",Media,1,devops;jira,Por hacer
+Story,DevOps,DEVOPS-009 Importar backlog a Jira real,Crear proyecto Scrum e importar jira/backlog.csv,Media,1,devops;jira,Por hacer
+Story,DevOps,DEVOPS-010 Migraciones versionadas con Alembic,Alembic por servicio con baseline idempotente que adopta bases existentes sin perder datos. Criterios: upgrade/downgrade verificados; el arranque de Docker no destruye datos.,Alta,5,devops;database,Hecho
+Story,Notificaciones Asincronas,US-012 Contrato de eventos AsyncAPI,"Documentar canales, payloads, productor/consumidor, reintentos, idempotencia y DLQ segun el codigo real (docs/asyncapi.yaml).",Media,3,docs;rabbitmq,Hecho
+Story,Notificaciones Asincronas,US-013 Outbox transaccional y relay resiliente,"Itinerario y evento en una sola transaccion; relay con confirms, SKIP LOCKED y reconexion; sin perdida ante caida de RabbitMQ.",Alta,8,backend;rabbitmq,Hecho
+Story,DevOps,DEVOPS-011 Healthchecks y arranque ordenado en Compose,"depends_on con service_healthy, restart, puertos solo en 127.0.0.1, Traefik sin socket Docker.",Media,3,devops;docker,Hecho
+Story,DevOps,"DEVOPS-012 Pipeline de seguridad (Dependabot, gitleaks, trivy)","Dependabot semanal, gitleaks en historial, trivy fs informativo.",Media,3,devops;security,En progreso
+Story,Notificaciones Asincronas,US-014 Recordatorios por correo antes del viaje (Sprint 6),"Persistir recordatorios, proceso programado, Mailpit en desarrollo, idempotencia, zonas horarias y cancelaciones. Requiere correo del usuario (hoy el auth-stub no lo tiene).",Media,8,notifications;mailpit,Hecho
+Story,DevOps,DEVOPS-013 Observabilidad (Sprint 7),Trazas OpenTelemetry/Jaeger y metricas Prometheus/Grafana conectadas a los servicios.,Baja,8,devops;observability,Por hacer
+Story,DevOps,DEVOPS-014 Despliegue continuo staging/produccion (Sprint 8),"Proveedor, secretos, health checks y rollback. Sin URL publica hasta que exista.",Media,8,devops;cd,Por hacer
+Story,DevOps,DEVOPS-015 Pruebas de resiliencia avanzadas (Sprint 9),"Latencia, timeouts, circuit breaker y caida de BD/Redis/proveedor/RabbitMQ con tools/fault_proxy.py (no Toxiproxy); scripts/e2e_faults.py 11/11.",Media,5,testing;resilience,Hecho
+Story,Gestion de Itinerarios,"US-015 Agenda del viajero: fecha y hora, sin traslapes ni saltos de ciudad","Salida con fecha/hora, llegada calculada, validacion 409 (OVERLAP/ORIGIN_MISMATCH/NEXT_MISMATCH) atomica con lock por usuario, sugerencia en UI y alertas.",Alta,8,itinerarios;agenda,Hecho
+Story,Seguridad y Plataforma,SEC-016 Dependencias sin vulnerabilidades conocidas (Sprint 10),"fastapi 0.162, PyJWT en lugar de python-jose, pip-audit 0, bandit 0, JWT_SECRET >= 32.",Alta,5,seguridad,Hecho
+Story,Seguridad y Plataforma,SEC-017 Endurecimiento de contenedores y cabeceras (Sprint 10),"read_only, cap_drop ALL, no-new-privileges y cabeceras HTTP; requiere probar con Docker.",Media,5,seguridad,Por hacer

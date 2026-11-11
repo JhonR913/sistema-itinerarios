@@ -1,0 +1,34 @@
+# Override para PRUEBAS DE FALLOS (Sprint 9): las dependencias de itinerary-service
+# y airport-service pasan por tools/fault_proxy.py.   SIN VALIDAR EN DOCKER (ver docs/resiliencia.md).
+#   docker compose -f docker-compose.yml -f docker-compose.mock.yml -f docker-compose.faults.yml up -d --build
+#   FAULT_ADMIN_URL=http://localhost:8099 python3 scripts/e2e_faults.py
+# Requiere las credenciales de PostgreSQL de itinerary en las URLs: se toman de .env via el
+# propio DATABASE_URL, por eso solo se sustituye el HOST:PUERTO con las variables FAULT_* de abajo.
+services:
+  fault-proxy:
+    image: python:3.11-slim
+    command: ["python", "/app/fault_proxy.py", "--admin", "8099",
+              "--listen", "18001=airport-service:8000",
+              "--listen", "15432=postgres-itinerary:5432",
+              "--listen", "16379=redis-airport:6379",
+              "--listen", "19000=mock-api-colombia:9000"]
+    volumes:
+      - ./tools/fault_proxy.py:/app/fault_proxy.py:ro
+    ports:
+      - "127.0.0.1:8099:8099"
+    networks: [itinerarios-net]
+
+  itinerary-service:
+    environment:
+      AIRPORT_SERVICE_URL: http://fault-proxy:18001
+      DATABASE_URL: ${ITINERARY_DATABASE_URL_VIA_PROXY:?define ITINERARY_DATABASE_URL_VIA_PROXY=postgresql://itinerary:<clave>@fault-proxy:15432/itinerary}
+    depends_on: [fault-proxy]
+
+  airport-service:
+    environment:
+      REDIS_URL: redis://fault-proxy:16379/0
+      API_COLOMBIA_BASE_URL: http://fault-proxy:19000/api/v1
+
+networks:
+  itinerarios-net:
+    external: true

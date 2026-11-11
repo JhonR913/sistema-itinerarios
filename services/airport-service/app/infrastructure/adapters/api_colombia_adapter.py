@@ -6,17 +6,21 @@ Airport, e implementa AirportRepositoryPort. Resiliencia en 3 niveles:
   2. API Colombia (vivo)  -> via Circuit Breaker + Retry/Backoff.
   3. Redis (stale) o PostgreSQL (durable) -> si el circuito esta abierto.
 """
+import logging
 from typing import List, Optional
 
 import httpx
 import pybreaker
-from tenacity import retry, stop_after_attempt, wait_exponential_jitter
+from sqlalchemy.exc import SQLAlchemyError
+from tenacity import RetryError, retry, stop_after_attempt, wait_exponential_jitter
 
 from app.domain.models import Airport
 from app.domain.ports import AirportRepositoryPort, AirportCachePort, AirportDurableStorePort
 
-API_COLOMBIA_BASE_URL = "https://api-colombia.com/api/v1"
+DEFAULT_API_COLOMBIA_BASE_URL = "https://api-colombia.com/api/v1"
 CACHE_TTL_SECONDS = 300
+
+logger = logging.getLogger("airport-service")
 
 airport_breaker = pybreaker.CircuitBreaker(fail_max=3, reset_timeout=30)
 
@@ -26,9 +30,9 @@ def _map_external_to_domain(raw: dict) -> Airport:
     return Airport(
         id=str(raw["id"]),
         external_id=str(raw["id"]),
-        iata_code=raw.get("iataCode", "N/A"),
-        name=raw.get("name", "Desconocido"),
-        city=city.get("name", "Desconocida"),
+        iata_code=raw.get("iataCode") or "N/A",  # el upstream puede enviar null
+        name=raw.get("name") or "Desconocido",
+        city=city.get("name") or "Desconocida",
         latitude=float(raw.get("latitude") or 0.0),
         longitude=float(raw.get("longitude") or 0.0),
     )
@@ -36,14 +40,16 @@ def _map_external_to_domain(raw: dict) -> Airport:
 
 class ApiColombiaAdapter(AirportRepositoryPort):
     def __init__(self, cache: AirportCachePort, durable_store: AirportDurableStorePort,
-                 http_client: Optional[httpx.Client] = None):
+                 http_client: Optional[httpx.Client] = None,
+                 base_url: str = DEFAULT_API_COLOMBIA_BASE_URL):
+        self._base_url = base_url.rstrip("/")
         self._cache = cache
         self._durable_store = durable_store
         self._client = http_client or httpx.Client(timeout=3.0)
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential_jitter(initial=0.5, max=4))
     def _fetch(self, path: str):
-        response = self._client.get(f"{API_COLOMBIA_BASE_URL}{path}")
+        response = self._client.get(f"{self._base_url}{path}")
         response.raise_for_status()
         return response.json()
 
@@ -55,20 +61,38 @@ class ApiColombiaAdapter(AirportRepositoryPort):
 
         try:
             raw_list = airport_breaker.call(self._fetch, "/Airport")
-        except pybreaker.CircuitBreakerError:
+        except (pybreaker.CircuitBreakerError, httpx.HTTPError, RetryError) as exc:
+            # Cualquier falla del upstream (circuito abierto, timeout, 5xx)
+            # activa el fallback; antes solo ocurria con el circuito abierto
+            # y las primeras fallas devolvian 500 aunque hubiera datos.
+            logger.warning('{"event":"upstream_failed_using_fallback","error":"%s"}', type(exc).__name__)
             # Nivel 2 de fallback: Redis stale.
             stale = self._cache.get(cache_key + ":stale")
             if stale is not None:
                 return stale
             # Nivel 3 de fallback: PostgreSQL durable. Solo aqui, cuando
             # ya no queda nada en Redis, se consulta la base de datos.
-            durable = self._durable_store.get_all()
+            try:
+                durable = self._durable_store.get_all()
+            except SQLAlchemyError as db_exc:
+                logger.warning('{"event":"durable_store_unavailable","error":"%s"}', type(db_exc).__name__)
+                durable = []
             if durable:
                 return durable
             raise
 
-        airports = [_map_external_to_domain(item) for item in raw_list]
-        self._durable_store.upsert_many(airports)
+        airports = []
+        for item in raw_list:
+            try:
+                airports.append(_map_external_to_domain(item))
+            except (KeyError, TypeError, ValueError) as exc:
+                # Un registro malformado no debe tumbar el listado completo.
+                logger.warning('{"event":"airport_record_skipped","error":"%s"}', type(exc).__name__)
+        try:
+            self._durable_store.upsert_many(airports)
+        except SQLAlchemyError as db_exc:
+            # El respaldo durable es secundario: no debe tumbar una respuesta valida.
+            logger.warning('{"event":"durable_store_write_failed","error":"%s"}', type(db_exc).__name__)
         self._cache.set(cache_key, airports, CACHE_TTL_SECONDS)
         self._cache.set(cache_key + ":stale", airports, CACHE_TTL_SECONDS * 20)
         return airports

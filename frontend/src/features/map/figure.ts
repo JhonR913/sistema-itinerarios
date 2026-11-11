@@ -1,7 +1,8 @@
 import type { Data, Layout } from "plotly.js";
 import { fitViewToAspect, pointOnArc, viewForPoints, type GeoView } from "../../lib/geo";
 import { COLOMBIA_BOUNDS } from "../airports/coordinates";
-import { formatDuration, formatTravelDate } from "../../lib/format";
+import { formatDuration } from "../../lib/format";
+import { formatDateTime } from "../../lib/schedule";
 import type { Airport } from "../../types/airport";
 import { toPoint, type MapRoute } from "./routes";
 
@@ -90,7 +91,7 @@ function routeLabel(route: MapRoute): string {
   return (
     `<b>${origin.iata_code} → ${destination.iata_code}</b><br>` +
     `${origin.city} → ${destination.city}<br>` +
-    `${formatTravelDate(itinerary.travel_date)} · ${formatDuration(itinerary.duration_minutes)}`
+    `${formatDateTime(itinerary.departure_at)} · ${formatDuration(itinerary.duration_minutes)}`
   );
 }
 

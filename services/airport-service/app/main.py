@@ -6,13 +6,17 @@ import uuid
 from fastapi import FastAPI, Request
 
 from app.infrastructure.api.routes import router
-from app.infrastructure.api.error_handlers import unhandled_exception_handler
+from app.infrastructure.api.error_handlers import (
+    UPSTREAM_ERRORS, unhandled_exception_handler, upstream_unavailable_handler,
+)
 
 logging.basicConfig(level=logging.INFO, format='{"level":"%(levelname)s","msg":"%(message)s"}')
 logger = logging.getLogger("airport-service")
 
 app = FastAPI(title="Airport Service", version="1.0.0")
 app.include_router(router)
+for _exc in UPSTREAM_ERRORS:
+    app.add_exception_handler(_exc, upstream_unavailable_handler)
 app.add_exception_handler(Exception, unhandled_exception_handler)
 
 

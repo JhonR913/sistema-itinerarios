@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Icon } from "../../components/ui/Icon";
-import { formatDuration, formatTravelDate } from "../../lib/format";
+import { formatDuration } from "../../lib/format";
+import { formatDateTime } from "../../lib/schedule";
 import type { Itinerary } from "../../types/itinerary";
 
 interface ItineraryDetailProps {
@@ -62,8 +63,12 @@ export function ItineraryDetail({ itinerary, onBack, onDelete }: ItineraryDetail
           <dd>{itinerary.destination.name}</dd>
         </div>
         <div>
-          <dt>Fecha</dt>
-          <dd>{formatTravelDate(itinerary.travel_date, "long")}</dd>
+          <dt>Sale</dt>
+          <dd>{formatDateTime(itinerary.departure_at)}</dd>
+        </div>
+        <div>
+          <dt>Llega</dt>
+          <dd>{formatDateTime(itinerary.arrival_at)}</dd>
         </div>
         <div>
           <dt>Duración</dt>

@@ -1,13 +1,26 @@
 """Dominio puro. Invariantes de negocio RN-001 a RN-008
 (Documento_Requerimientos.docx seccion 5)."""
 from dataclasses import dataclass, field
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from uuid import uuid4
+from zoneinfo import ZoneInfo
+
+# Todos los aeropuertos del sistema (API Colombia) estan en UTC-5, sin DST.
+LOCAL_TZ = ZoneInfo("America/Bogota")
 
 
 class InvalidItineraryError(ValueError):
     """Error de dominio. La capa API lo traduce a HTTP 422."""
-    pass
+
+
+@dataclass(frozen=True)
+class DomainEvent:
+    """Evento de dominio a publicar. Se persiste en la tabla outbox dentro
+    de la MISMA transaccion que el agregado (Transactional Outbox), y un
+    relay independiente lo entrega al broker."""
+    event_type: str
+    aggregate_id: str
+    payload: dict
 
 
 @dataclass(frozen=True)
@@ -25,13 +38,16 @@ class Itinerary:
     nombre_usuario: str
     origin: AirportSnapshot
     destination: AirportSnapshot
-    travel_date: date
+    departure_at: datetime          # instante de salida (aware; se guarda en UTC)
     duration_minutes: int
     user_id: str
     id: str = field(default_factory=lambda: str(uuid4()))
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     def __post_init__(self):
+        if not isinstance(self.departure_at, datetime) or self.departure_at.tzinfo is None:
+            raise InvalidItineraryError("La salida debe incluir fecha y hora con zona horaria.")
+        self.departure_at = self.departure_at.astimezone(timezone.utc)
         if self.origin.airport_id == self.destination.airport_id:
             raise InvalidItineraryError(
                 "El aeropuerto de salida y el de llegada no pueden ser el mismo."
@@ -50,3 +66,17 @@ class Itinerary:
             )
         self.origin = origin
         self.destination = destination
+
+    @property
+    def arrival_at(self) -> datetime:
+        return self.departure_at + timedelta(minutes=self.duration_minutes)
+
+    @property
+    def travel_date(self) -> date:
+        """Fecha local (America/Bogota) de la salida."""
+        return self.departure_at.astimezone(LOCAL_TZ).date()
+
+    def reschedule(self, departure_at: datetime) -> None:
+        if departure_at.tzinfo is None:
+            raise InvalidItineraryError("La salida debe incluir fecha y hora con zona horaria.")
+        self.departure_at = departure_at.astimezone(timezone.utc)

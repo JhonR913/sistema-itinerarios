@@ -1,7 +1,7 @@
 """RF-014. El Auth stub NO gestiona contraseñas ni sesiones: solo valida
 que el username no este vacio y emite el JWT."""
 import pytest
-from jose import jwt
+import jwt
 
 from app.domain.models import UsernameClaim
 from app.domain.ports import TokenIssuerPort

@@ -18,7 +18,7 @@ def issue_token(
     issuer: TokenIssuerPort = Depends(get_token_issuer),
 ):
     try:
-        token = IssueToken(issuer).execute(body.username)
+        token = IssueToken(issuer).execute(body.username, body.email)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     return IssueTokenResponse(access_token=token)

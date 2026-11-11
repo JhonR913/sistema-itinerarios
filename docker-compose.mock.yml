@@ -1,0 +1,26 @@
+# Override para ejecutar SIN internet: reemplaza API Colombia por el mock
+# local (tools/mock_api_colombia.py, DATOS DE PRUEBA).
+#   docker compose -f docker-compose.yml -f docker-compose.mock.yml up -d --build
+services:
+  mock-api-colombia:
+    image: python:3.11-slim
+    command: ["python", "/app/mock_api_colombia.py", "9000"]
+    volumes:
+      - ./tools/mock_api_colombia.py:/app/mock_api_colombia.py:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9000/api/v1/Airport', timeout=3)"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [itinerarios-net]
+
+  airport-service:
+    environment:
+      API_COLOMBIA_BASE_URL: http://mock-api-colombia:9000/api/v1
+    depends_on:
+      mock-api-colombia:
+        condition: service_healthy
+
+networks:
+  itinerarios-net:
+    external: true

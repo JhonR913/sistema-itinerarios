@@ -7,6 +7,9 @@ interface IssueTokenResponse {
 }
 
 export const authApi = {
-  issueToken: (username: string) =>
-    apiRequest<IssueTokenResponse>("/api/auth/token", { method: "POST", body: { username } }),
+  issueToken: (username: string, email?: string) =>
+    apiRequest<IssueTokenResponse>("/api/auth/token", {
+      method: "POST",
+      body: email ? { username, email } : { username },
+    }),
 };

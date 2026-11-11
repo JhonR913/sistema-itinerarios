@@ -1,18 +1,23 @@
 services:
   traefik:
     image: traefik:v3.1
+    # Solo proveedor de ARCHIVO: ya no se monta el socket de Docker (darle
+    # el socket a un contenedor expuesto equivale a darle root del host).
     command:
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
       - "--providers.file.directory=/etc/traefik/dynamic"
       - "--entrypoints.web.address=:80"
-      - "--api.dashboard=true"
+      - "--ping=true"
+      - "--accesslog=true"
     ports:
       - "80:80"
-      - "8080:8080"  # dashboard, solo para desarrollo
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./dynamic:/etc/traefik/dynamic:ro
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped
     networks: [itinerarios-net]
 
 networks:

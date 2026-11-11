@@ -16,6 +16,8 @@ const ITINERARY = (id: string, from: string, to: string): Itinerary => ({
   origin: snapshot(from, "X"),
   destination: snapshot(to, "Y"),
   travel_date: "2026-11-01",
+  departure_at: "2026-11-01T11:00:00+00:00",
+  arrival_at: "2026-11-01T12:00:00+00:00",
   duration_minutes: 60,
 });
 

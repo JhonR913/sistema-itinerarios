@@ -1,5 +1,5 @@
 import { Icon } from "../../components/ui/Icon";
-import { useAuth } from "./AuthContext";
+import { useAuth } from "./authContextValue";
 import { LOGIN_INPUT_ID } from "./constants";
 
 /** Estado de sesión en la barra superior: usuario real y cierre de sesión, o acceso al login. */

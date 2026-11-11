@@ -17,6 +17,8 @@ const itinerary = (id: string, from: Airport, to: Airport): Itinerary => ({
   origin: snap(from),
   destination: snap(to),
   travel_date: "2026-11-01",
+  departure_at: "2026-11-01T11:00:00+00:00",
+  arrival_at: "2026-11-01T12:00:00+00:00",
   duration_minutes: 60,
 });
 
