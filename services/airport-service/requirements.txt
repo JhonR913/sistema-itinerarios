@@ -5,7 +5,7 @@ pybreaker==1.2.0
 tenacity==9.0.0
 redis==5.0.8
 pydantic-settings==2.5.2
-sqlalchemy==2.0.35
+sqlalchemy==2.1.8
 psycopg2-binary==2.9.9
 alembic==1.13.3
 starlette>=1.10.0
