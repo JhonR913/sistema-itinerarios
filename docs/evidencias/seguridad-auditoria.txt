@@ -1,0 +1,16 @@
+# pip-audit 2026-11-04T16:17:18-05:00 (base de datos OSV/PyPI consultada en esta fecha)
+== auth-stub: No known vulnerabilities found
+== airport-service: No known vulnerabilities found
+== itinerary-service: No known vulnerabilities found
+== notification-function: No known vulnerabilities found
+
+# bandit (config .bandit; excluye tests y alembic)
+Run metrics:
+	Total issues (by severity):
+		Undefined: 0
+		Low: 0
+		Medium: 0
+		High: 0
+	Total issues (by confidence):
+		Undefined: 0
+		Low: 0

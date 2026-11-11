@@ -5,13 +5,21 @@ import uuid
 from fastapi import FastAPI, Request
 
 from app.infrastructure.api.routes import router
-from app.infrastructure.api.error_handlers import unhandled_exception_handler
+from sqlalchemy.exc import InterfaceError, OperationalError
+
+from app.domain.scheduling import ScheduleConflictError
+from app.infrastructure.api.error_handlers import (
+    database_unavailable_handler, schedule_conflict_handler, unhandled_exception_handler,
+)
 
 logging.basicConfig(level=logging.INFO, format='{"level":"%(levelname)s","msg":"%(message)s"}')
 logger = logging.getLogger("itinerary-service")
 
 app = FastAPI(title="Itinerary Service", version="1.0.0")
 app.include_router(router)
+app.add_exception_handler(ScheduleConflictError, schedule_conflict_handler)
+app.add_exception_handler(OperationalError, database_unavailable_handler)
+app.add_exception_handler(InterfaceError, database_unavailable_handler)
 app.add_exception_handler(Exception, unhandled_exception_handler)
 
 

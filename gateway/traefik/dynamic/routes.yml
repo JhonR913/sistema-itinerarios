@@ -21,6 +21,13 @@ http:
       service: itinerary-service
       middlewares: ["rate-limit-default"]
 
+    # Todo lo que NO sea /api va al frontend (http://localhost). La exclusion
+    # de /api evita un bucle Traefik -> nginx -> Traefik en rutas /api/ inexistentes.
+    frontend-router:
+      rule: "!PathPrefix(`/api`)"
+      priority: 1
+      service: frontend
+
   services:
     auth-stub:
       loadBalancer:
@@ -36,3 +43,8 @@ http:
       loadBalancer:
         servers:
           - url: "http://itinerary-service:8000"
+
+    frontend:
+      loadBalancer:
+        servers:
+          - url: "http://frontend:8080"

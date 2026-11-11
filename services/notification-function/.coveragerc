@@ -1,0 +1,8 @@
+[run]
+source = .
+relative_files = True
+omit =
+    tests/*
+    alembic/*
+[report]
+skip_empty = True

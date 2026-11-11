@@ -1,5 +1,6 @@
 import { Icon } from "../../components/ui/Icon";
-import { formatDuration, formatTravelDate } from "../../lib/format";
+import { formatDuration } from "../../lib/format";
+import { formatDateTime, formatTime } from "../../lib/schedule";
 import type { Itinerary } from "../../types/itinerary";
 
 interface ItineraryListProps {
@@ -35,7 +36,8 @@ export function ItineraryList({ itineraries, selectedId, onSelect }: ItineraryLi
               </span>
               <span className="trip__meta">
                 <span>
-                  <Icon name="calendar" size={14} /> {formatTravelDate(itinerary.travel_date)}
+                  <Icon name="calendar" size={14} /> {formatDateTime(itinerary.departure_at)} →{" "}
+                  {formatTime(itinerary.arrival_at)}
                 </span>
                 <span>
                   <Icon name="clock" size={14} /> {formatDuration(itinerary.duration_minutes)}

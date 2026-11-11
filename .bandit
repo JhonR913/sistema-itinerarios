@@ -1,0 +1,4 @@
+# B404/B603: los scripts e2e lanzan comandos propios (shlex.split de variables
+# de entorno definidas por quien ejecuta); B101: assert en scripts de prueba.
+skips: ["B404", "B603", "B101"]
+exclude_dirs: ["tests", "alembic"]

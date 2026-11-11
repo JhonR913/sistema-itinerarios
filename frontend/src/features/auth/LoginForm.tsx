@@ -1,12 +1,15 @@
 import { useState, type FormEvent } from "react";
 import { Icon } from "../../components/ui/Icon";
-import { useAuth } from "./AuthContext";
+import { useAuth } from "./authContextValue";
 import { LOGIN_INPUT_ID } from "./constants";
+
+const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 /** Panel de acceso. Solo se muestra sin sesión; el contrato con /api/auth/token no cambia. */
 export function LoginForm() {
   const { login } = useAuth();
   const [input, setInput] = useState("");
+  const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -17,11 +20,17 @@ export function LoginForm() {
       setError("Escribe tu nombre de usuario para continuar.");
       return;
     }
+    const emailValue = email.trim();
+    if (emailValue && !EMAIL_PATTERN.test(emailValue)) {
+      setError("El correo no parece válido (o déjalo vacío).");
+      return;
+    }
     setError(null);
     setIsSubmitting(true);
     try {
-      await login(username);
+      await login(username, emailValue || undefined);
       setInput("");
+      setEmail("");
     } catch {
       setError("No se pudo iniciar sesión. Intenta de nuevo.");
     } finally {
@@ -56,6 +65,21 @@ export function LoginForm() {
             <Icon name="alert" size={15} /> {error}
           </p>
         )}
+      </div>
+
+      <div className="field">
+        <label htmlFor="login-email">Correo (opcional)</label>
+        <input
+          id="login-email"
+          className="input"
+          type="email"
+          autoComplete="email"
+          placeholder="Para recibir recordatorios de tus viajes"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          disabled={isSubmitting}
+        />
+        <p className="muted">No se verifica; solo se usa para enviarte el recordatorio un día antes del viaje.</p>
       </div>
 
       <button type="submit" className="btn btn--primary btn--block" disabled={isSubmitting}>

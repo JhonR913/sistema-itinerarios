@@ -1,8 +1,30 @@
-from datetime import date
-from typing import List, Optional
+from datetime import datetime, timezone
+from typing import Callable, List, Optional
 
-from app.domain.models import Itinerary, AirportSnapshot
-from app.domain.ports import AirportGatewayPort, ItineraryRepositoryPort, EventPublisherPort
+from app.domain.models import Itinerary, DomainEvent, InvalidItineraryError
+from app.domain.ports import AirportGatewayPort, ItineraryRepositoryPort
+from app.domain.scheduling import check_schedule
+
+
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _event_payload(it: Itinerary, owner_email: Optional[str] = None) -> dict:
+    payload = {
+        "itinerary_id": it.id,
+        "nombre_usuario": it.nombre_usuario,
+        "origin": it.origin.iata_code,
+        "destination": it.destination.iata_code,
+        "origin_city": it.origin.city,
+        "destination_city": it.destination.city,
+        "travel_date": str(it.travel_date),
+        "departure_at": it.departure_at.isoformat(),
+        "arrival_at": it.arrival_at.isoformat(),
+    }
+    if owner_email:  # solo si el JWT lo trae; permite enviar recordatorios
+        payload["email"] = owner_email
+    return payload
 
 
 class AirportNotFoundError(ValueError):
@@ -16,13 +38,16 @@ class ItineraryNotFoundError(ValueError):
 class CreateItinerary:
     def __init__(self, airport_gateway: AirportGatewayPort,
                  repository: ItineraryRepositoryPort,
-                 event_publisher: EventPublisherPort):
+                 min_connection_minutes: int = 0,
+                 clock: Callable[[], datetime] = _now):
         self._airport_gateway = airport_gateway
         self._repository = repository
-        self._event_publisher = event_publisher
+        self._min_connection = min_connection_minutes
+        self._clock = clock
 
     def execute(self, nombre_usuario: str, origin_id: str, destination_id: str,
-                travel_date: date, duration_minutes: int, user_id: str) -> Itinerary:
+                departure_at: datetime, duration_minutes: int, user_id: str,
+                owner_email: Optional[str] = None) -> Itinerary:
         origin = self._airport_gateway.get_airport_snapshot(origin_id)
         if origin is None:
             raise AirportNotFoundError(f"Aeropuerto de salida '{origin_id}' no existe.")
@@ -33,21 +58,21 @@ class CreateItinerary:
 
         itinerary = Itinerary(
             nombre_usuario=nombre_usuario, origin=origin, destination=destination,
-            travel_date=travel_date, duration_minutes=duration_minutes, user_id=user_id,
+            departure_at=departure_at, duration_minutes=duration_minutes, user_id=user_id,
         )
+        if itinerary.departure_at <= self._clock():
+            raise InvalidItineraryError("La salida debe ser una fecha y hora futura.")
 
-        self._repository.save(itinerary)
-        self._event_publisher.enqueue(
+        event = DomainEvent(
             event_type="ItineraryCreatedEvent",
             aggregate_id=itinerary.id,
-            payload={
-                "itinerary_id": itinerary.id,
-                "nombre_usuario": itinerary.nombre_usuario,
-                "origin": itinerary.origin.iata_code,
-                "destination": itinerary.destination.iata_code,
-                "travel_date": str(itinerary.travel_date),
-            },
+            payload=_event_payload(itinerary, owner_email),
         )
+        # Itinerario + evento + validacion de agenda en UNA transaccion
+        # (Transactional Outbox; el usuario queda bloqueado mientras se valida).
+        self._repository.save_with_event(
+            itinerary, event,
+            schedule_check=lambda existing: check_schedule(itinerary, existing, self._min_connection))
         return itinerary
 
 
@@ -69,12 +94,16 @@ class ListItineraries:
 
 class UpdateItinerary:
     def __init__(self, airport_gateway: AirportGatewayPort,
-                 repository: ItineraryRepositoryPort):
+                 repository: ItineraryRepositoryPort,
+                 min_connection_minutes: int = 0,
+                 clock: Callable[[], datetime] = _now):
         self._airport_gateway = airport_gateway
         self._repository = repository
+        self._min_connection = min_connection_minutes
+        self._clock = clock
 
     def execute(self, itinerary_id: str, user_id: str,
-                travel_date: Optional[date] = None,
+                departure_at: Optional[datetime] = None,
                 duration_minutes: Optional[int] = None,
                 origin_id: Optional[str] = None,
                 destination_id: Optional[str] = None) -> Itinerary:
@@ -95,15 +124,21 @@ class UpdateItinerary:
                     raise AirportNotFoundError(f"Aeropuerto de llegada '{destination_id}' no existe.")
             itinerary.update_route(new_origin, new_destination)
 
-        if travel_date is not None:
-            itinerary.travel_date = travel_date
+        if departure_at is not None:
+            itinerary.reschedule(departure_at)
+            if itinerary.departure_at <= self._clock():
+                raise InvalidItineraryError("La salida debe ser una fecha y hora futura.")
         if duration_minutes is not None:
             if duration_minutes <= 0:
-                from app.domain.models import InvalidItineraryError
                 raise InvalidItineraryError("La duracion debe ser un entero positivo.")
             itinerary.duration_minutes = duration_minutes
 
-        self._repository.update(itinerary)
+        payload = _event_payload(itinerary)
+        payload.pop("nombre_usuario")   # el Updated no lleva datos personales
+        self._repository.update_with_event(
+            itinerary,
+            DomainEvent(event_type="ItineraryUpdatedEvent", aggregate_id=itinerary.id, payload=payload),
+            schedule_check=lambda existing: check_schedule(itinerary, existing, self._min_connection))
         return itinerary
 
 
@@ -112,4 +147,8 @@ class DeleteItinerary:
         self._repository = repository
 
     def execute(self, itinerary_id: str, user_id: str) -> bool:
-        return self._repository.delete(itinerary_id, user_id)
+        return self._repository.delete_with_event(itinerary_id, user_id, DomainEvent(
+            event_type="ItineraryDeletedEvent",
+            aggregate_id=itinerary_id,
+            payload={"itinerary_id": itinerary_id},
+        ))

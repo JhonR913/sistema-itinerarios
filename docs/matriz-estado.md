@@ -1,138 +1,60 @@
-# Matriz de estado — implementación real (se actualiza por sprint)
+# Matriz de estado — requisito → implementación → prueba → evidencia
 
-A diferencia de la Matriz_Cumplimiento.docx de la fase documental (que
-describe diseño), este archivo vive en el código y solo registra lo que
-ya se implementó y se verificó ejecutando algo.
+Leyenda: ✅ **Confirmado** (ejecutado) · 🟡 **Implementado, no validado** · ⏳ **Pendiente** · 🔒 **Bloqueado** (acceso externo).
+Entorno de ejecución y límites: [`evidencias/entorno.md`](evidencias/entorno.md). Fecha: 2026-11-04.
 
-## Sprint 1 — Airport Service
+## Rúbrica / entrega
+| # | Requisito | Estado | Implementación | Prueba / evidencia |
+|---|---|---|---|---|
+| A | Flujo E2E login → vuelo → evento → notificación → correo | ✅ (procesos nativos) · 🟡 en Compose | servicios + outbox + consumidor + reminder-worker | `scripts/e2e_smoke.py` **24/24 PASS** (`evidencias/e2e-smoke.txt`); correo contra sumidero SMTP propio, no Mailpit |
+| A+ | **Agenda del viajero** (sin traslapes ni saltos de ciudad, fecha y hora, llegada calculada, alertas) | ✅ (nativo) · 🟡 en Compose | `domain/scheduling.py`, lock por usuario, UI con aviso previo | 15 pruebas unitarias + 4 de integración (incluye **carrera concurrente**: sin el lock falla 4/4, con él pasa 5/5) + E2E pasos 18–21 |
+| A | Resiliencia: RabbitMQ caído | ✅ (nativo) | outbox + relay/consumidor con reconexión | `scripts/e2e_resilience.py` 4/4 PASS |
+| A | Resiliencia: latencia/caída de Airport, BD, Redis y proveedor | ✅ (nativo) | timeouts, circuit breaker, 503/502, respaldo PostgreSQL | `scripts/e2e_faults.py` 11/11 PASS (proxy de fallos propio, **no** Toxiproxy) |
+| A | Arranque con Docker Compose | 🔒 | compose con healthchecks, `bootstrap-env.sh` | `docker compose config` OK (12 servicios); **`up` no ejecutado** (sin Docker Hub) |
+| B | Pruebas backend | ✅ | unitarias + integración con PostgreSQL real | airport 20, itinerary 60, auth 10, notification 60 = **150 PASS** (`evidencias/pruebas.txt`) |
+| B | Pruebas frontend, tipos, lint, build | ✅ | vitest | **72 PASS** · `tsc` OK · lint sin avisos · build OK · `npm audit --omit=dev`: 0 |
+| B | Vulnerabilidades de dependencias | ✅ backend · 🟡 frontend dev | backend: `pip-audit` **0** tras subir fastapi/starlette y migrar python-jose → PyJWT; frontend: 7 en dependencias **de desarrollo** (vitest/esbuild) sin aplicar `--force` | `evidencias/seguridad-auditoria.txt`, `seguridad.md` |
+| B | CI GitHub Actions | 🟡 / 🔒 | `.github/workflows/ci.yml` | **no ejecutado** en GitHub; ver `ci-y-calidad.md` |
+| B | SonarCloud / Quality Gate | 🔒 | `sonar-project.properties` + job condicionado | requiere `SONAR_TOKEN` y variables; **ningún análisis ejecutado** |
+| C | Carga con Locust | ✅ | scripts con flujo real (agenda encadenada por usuario virtual) | 4 perfiles repetidos con el código actual, 0 fallos, backlog del outbox 0; `pruebas-de-carga.md`, `evidencias/locust/` |
+| D | Migraciones versionadas | ✅ | Alembic ×3 (itinerary 0003 `departure_at` con backfill; notification 0003 horas) | upgrade/downgrade y adopción de BD con datos; backfill probado (`migraciones.md`) |
+| E | Contrato de eventos | ✅ | `docs/asyncapi.yaml` | validado con AsyncAPI CLI (0 errores) y contrastado con el código |
+| F | Backlog Jira | 🟡 / 🔒 | `jira/backlog.csv` (estados reales; sprints 7 y 8 pendientes) | **no importado**; capturas manuales (ver `evidencias/README.md`) |
+| G | README / documentación | ✅ | `README.md`, `context.md`, `docs/*` | nombres de servicios/puertos/variables contrastados con Compose |
 
-| Ítem | Estado | Evidencia |
-|---|---|---|
-| RF-001 Listar aeropuertos | Implementado | `app/application/use_cases.py::ListAirports` |
-| RF-002 Consultar por ID | Implementado | `app/application/use_cases.py::GetAirportById` |
-| RF-016 Cache Redis | Implementado | `app/infrastructure/adapters/redis_cache.py` |
-| RF-017 Circuit Breaker | Implementado | `app/infrastructure/adapters/api_colombia_adapter.py` |
-| Patrón Adapter | Implementado | `app/infrastructure/adapters/api_colombia_adapter.py` |
-| RNF-SEC-001 (sin secretos en código) | Implementado | `.env.example` + `.gitignore`, sin valores reales en el repo |
-| RNF-SEC-008 (sin stack trace en prod) | Implementado | `app/infrastructure/api/error_handlers.py` |
-| UT-001, UT-002, UT-003 | **Ejecutadas — 4/4 PASS** | `pytest tests/unit -v` (ver commit de este sprint) |
-| Pruebas de carga | Diseñadas, no ejecutadas aún | `tests/load/locustfile.py` (requiere el servicio desplegado) |
-| Swagger | Implementado (automático) | FastAPI expone `/docs` sin configuración adicional |
-| Docker | Implementado | `Dockerfile` + `docker-compose.yml` (no verificado con `docker compose up` real en este entorno) |
+## Defectos encontrados y corregidos
+| Defecto | Cómo se detectó | Corrección | Prueba |
+|---|---|---|---|
+| Itinerario y evento en **dos transacciones** (el outbox no resolvía el Double Write) | lectura de código | `save_with_event` atómico | integración: fallo del evento revierte el itinerario |
+| Relay sin reconexión; sin `SKIP LOCKED`; errores tragados | lectura | relay reescrito (confirms, 1 TX/evento, reconexión) | integración (6) |
+| Relay drenaba ~10 eventos/s → **1035 PENDING** tras la carga | **Locust** (medido) | no dormir con lote lleno | regresión + repetición de carga: 0 pendientes a los 10 s |
+| Mensaje inválido se reencolaba sin fin | lectura | `reject(requeue=False)` → DLQ | unit + E2E paso 11 |
+| Idempotencia con SELECT+INSERT (condición de carrera) | lectura | `ON CONFLICT DO NOTHING` | integración con 8 hilos concurrentes |
+| Contenedores Postgres sin `POSTGRES_PASSWORD` | lectura de `.env.example`/Compose | `db.env` + `bootstrap-env.sh` | `docker compose config`; ⏳ arranque real |
+| Fallback de aeropuertos solo con circuito abierto (las 2 primeras fallas → 500) | lectura | cualquier falla del upstream usa Redis stale / PostgreSQL; 503 si no hay respaldo | unit (5 nuevas) |
+| Registro con `iataCode` nulo tumbaba todo el listado | lectura | mapeo tolerante, registro inválido se omite | unit |
+| Id no-UUID → 500 | lectura | 404 | unit API |
+| JWT aceptado sin `exp` | lectura | `require_exp` | unit API |
+| Caché Redis con `pickle` | lectura (hotspot típico de Sonar) | JSON | unit |
+| Traefik con socket de Docker montado; puertos de BD/servicios abiertos | lectura | solo proveedor de archivo; puertos en `127.0.0.1` | `config` |
+| `locust`/`pytest` dentro de la imagen de producción | lectura de locks | `requirements-dev.txt` aparte; locks regenerados con las mismas versiones transitivas | `pip --dry-run --require-hashes` ×4 |
 
-## Pendiente para el siguiente sprint (Sprint 2 — Itinerary Service)
+**Importante:** estos defectos se detectaron leyendo el código del ZIP recibido; no se reprodujeron uno a uno sobre la versión original, salvo el del relay (medido con Locust antes del fix).
 
-Ver jira/backlog.csv, épica "Gestión de Itinerarios" (US-004 a US-007).
+## Pruebas: antes → después
+Backend 23 → **150**; frontend 55 → **72** (cobertura 54.8 % medida antes de la agenda; los componentes visuales no tienen pruebas).
 
-## Revisión post-Sprint 1 — verificación de Arquitectura Hexagonal
+## Sprints adicionales (evaluados)
+| Sprint | Decisión |
+|---|---|
+| 6 Recordatorios | ✅ (nativo) | correo en el JWT (opcional, sin inventar identidades), eventos Updated/Deleted, `reminder-worker`, idempotencia, zonas horarias, cancelación; probado con sumidero SMTP propio. **Mailpit en Compose: 🟡 no ejecutado** |
+| 7 Observabilidad | ⏳ No implementado (Prometheus/Grafana/Jaeger no se pueden levantar en el entorno); hay logs JSON con `X-Trace-Id` |
+| 8 Despliegue continuo | ⏳ Sin proveedor/entorno definido; no hay URL pública |
+| 9 Resiliencia | ✅ latencia, timeouts, circuit breaker, caída de BD/Redis/proveedor/RabbitMQ con **proxy de fallos propio** (`tools/fault_proxy.py`); Toxiproxy/Testcontainers no usados |
+| 10 Seguridad | ✅ parcial: ver [`seguridad.md`](seguridad.md) (pip-audit 0, bandit 0, PyJWT, JWT_SECRET ≥ 32); ⏳ endurecimiento de contenedores y cabeceras |
 
-Se verificó con `grep` real (no solo lectura de comentarios) la dirección
-de dependencias de las 4 capas de Airport Service: `domain` no importa
-nada externo, `application` solo importa `domain`, `infrastructure/adapters`
-implementa los puertos del dominio, `infrastructure/api` depende hacia
-adentro. **Confirmado: Hexagonal correctamente aplicado.**
-
-Único ajuste aplicado: `routes.py` construía directamente los adaptadores
-concretos (`ApiColombiaAdapter`, `RedisAirportCache`), mezclando
-composition root con la capa de traducción HTTP. Se extrajo a
-`app/infrastructure/api/dependencies.py` y se inyecta vía `Depends()` de
-FastAPI. No era una violación de la regla de dependencia, pero sí
-incumplía la propia regla del `CLAUDE.md` de no mezclar responsabilidades
-en el router. Pruebas re-ejecutadas tras el cambio: **4/4 PASS**.
-
-## Sprint 2 — Itinerary Service
-
-| Ítem | Estado | Evidencia |
-|---|---|---|
-| RF-004 a RF-010 | Implementado | `app/application/use_cases.py` |
-| Patrón Outbox (Double Write Problem) | Implementado | `outbox_publisher.py` + `outbox_worker.py` |
-| Adapter HTTP a Airport Service + Circuit Breaker | Implementado | `airport_http_adapter.py` |
-| RNF-SEC-006 (anti-IDOR) | Implementado y probado | `test_UT008...` |
-| RNF-SEC-007 (anti mass-assignment) | Implementado y probado | `test_UT010...` |
-| RNF-SEC-004 (sin SQL concatenado) | Implementado | `postgres_repository.py`, 100% `text()` parametrizado |
-| Composition root limpia desde el inicio | Implementado | `dependencies.py`, lección del audit de Sprint 1 aplicada sin parche posterior |
-| UT-004 a UT-011 + 2 complementarias | **Ejecutadas — 10/10 PASS** | `pytest tests/unit -v` |
-| Pruebas de carga | Diseñadas, no ejecutadas aún | `tests/load/locustfile.py` |
-| Docker | Escrito, no verificado end-to-end (sin Docker en este entorno) | `Dockerfile` + `docker-compose.yml` |
-
-## Sprint 3 — Notification Function + Gateway + conexión RabbitMQ real
-
-| Ítem | Estado | Evidencia |
-|---|---|---|
-| RF-012 Procesar notificación | Implementado | `services/notification-function/handler.py` |
-| Idempotencia ante reentrega (at-least-once) | Implementado y probado | `tests/unit/test_handler.py` — 2/2 PASS (inserta 1ra vez, ignora duplicado) |
-| Conexión real a RabbitMQ | Implementado | `consumer.py` (pika, basic_consume + ack/nack) |
-| RabbitMQ como pieza compartida (un solo broker) | Verificado | Declarado una vez en `itinerary-service/docker-compose.yml`, referenciado desde `notification-function` vía `depends_on` + misma red `itinerarios-net` |
-| API Gateway (Traefik) | Implementado | `gateway/traefik/` — routing + rate limiting, sin lógica de negocio |
-| docker-compose raíz (monorepo) | Implementado | `docker-compose.yml` con `include:` de los 4 sub-compose |
-| Validación de sintaxis de los 6 YAML (compose + Traefik) | **Verificada — 6/6 OK** | `python3 -c "import yaml; yaml.safe_load(...)"` sobre cada archivo |
-| `docker compose up` end-to-end real | **No verificado** | Este entorno no tiene Docker instalado; pendiente de correrlo en tu máquina (ver sección "Cómo levantar todo" en el README) |
-
-## Resumen de pruebas unitarias ejecutadas hasta ahora
-
-- Airport Service: 4/4 PASS
-- Itinerary Service: 10/10 PASS
-- Notification Function: 2/2 PASS
-- **Total: 16/16 PASS**, en los 3 servicios Python del sistema.
-
-## Fix post-Sprint 3 — Airport Service sin base de datos propia (gap real detectado)
-
-Se detectó que Airport Service no tenía base de datos relacional propia
-(solo Redis), incumpliendo el requisito explícito de la rúbrica ("una
-base de datos por servicio") y desalineado del Diagrama Entidad-Relación
-ya cerrado (`Documento_Diseno_y_Diagramas.docx` figura 5, tabla `airports`
-en `airport_db`).
-
-**Corregido:** se agregó `PostgresAirportStore` como tercer nivel de
-resiliencia (Redis fresco → Redis stale → PostgreSQL durable → error),
-con su propia migración (`migrations/001_init.sql`) y su propio
-contenedor en `docker-compose.yml`. Pruebas nuevas: 2/2 PASS, verificando
-el fallback a Postgres con el circuito forzado abierto y el caso donde
-ni Redis ni Postgres tienen nada (el error SÍ se propaga, no se inventa
-una respuesta vacía).
-
-**Total Airport Service tras el fix: 6/6 pruebas unitarias en verde.**
-
-## Sprint 4 — Auth stub (emisor de JWT)
-
-| Ítem | Estado | Evidencia |
-|---|---|---|
-| RF-014 Autenticar usuario | Implementado | `services/auth-stub/app/application/use_cases.py::IssueToken` |
-| RF-015 Propagar identidad | Implementado (routing) | Gateway enruta `/api/auth` sin tocar el token |
-| Mismo algoritmo/claim que valida Itinerary Service | Verificado con prueba cruzada | `test_issued_token_is_valid_hs256_and_carries_username_as_sub` — misma librería (`python-jose`), mismo claim `sub` |
-| Rechazo de secreto incorrecto | Probado | `test_token_signed_with_wrong_secret_fails_validation` |
-| **Total Auth stub** | **5/5 PASS** | |
-| Conectado al Gateway y al compose raíz | Implementado | `gateway/traefik/dynamic/routes.yml`, `docker-compose.yml` raíz con `include:` de 5 sub-compose |
-
-## Total acumulado de pruebas unitarias (todos los servicios Python)
-
-- Airport Service: 6/6 PASS (4 originales + 2 de resiliencia con Postgres)
-- Itinerary Service: 10/10 PASS
-- Notification Function: 2/2 PASS
-- Auth stub: 5/5 PASS
-- **Total: 23/23 PASS**
-
-## Sprint 5 — Frontend (RF-003 mapa + gestión de itinerarios)
-
-| Ítem | Estado | Evidencia real |
-|---|---|---|
-| RF-003 Mapa interactivo con Plotly | Implementado | `src/features/airports/AirportMap.tsx` |
-| Arquitectura en capas (api/, features/, types/, lib/) | Implementado | Ver `frontend/README.md` |
-| Token JWT solo en memoria (anti falla #10) | Implementado | `src/features/auth/AuthContext.tsx` |
-| Validación en frontend NO reemplaza al backend | Documentado y aplicado | `ItineraryForm.tsx` valida origen≠destino, pero el backend es la autoridad |
-| `npm install` | **Ejecutado — 527 paquetes instalados** | |
-| Vulnerabilidades de dependencias | Detectadas (7, todas en deps de desarrollo: vitest/esbuild) — intentado fix mayor, revertido por conflictos de peer deps; riesgo aceptado y documentado porque no afectan el bundle de producción | `npm audit` |
-| Pruebas (vitest + testing-library) | **Ejecutadas — 2/2 PASS** | `npm test` sobre `useAirports.test.ts`, con `fetch` mockeado |
-| Lint (eslint) | **Ejecutado — 0 errores, 1 warning menor** | `npm run lint` |
-| Build de producción | **Ejecutado y exitoso** | `npm run build` — bundle inicial 150 KB (antes 5 MB) tras code-splitting de Plotly |
-| Docker | Escrito, no verificado end-to-end (sin Docker en este entorno) | `Dockerfile` (multi-stage, nginx) + `docker-compose.yml` |
-| Conectado al compose raíz | Implementado | `docker-compose.yml` raíz, 6 sub-compose vía `include:` |
-
-## Total final de pruebas automatizadas ejecutadas
-
-- Airport Service: 6/6 PASS
-- Itinerary Service: 10/10 PASS
-- Notification Function: 2/2 PASS
-- Auth stub: 5/5 PASS
-- Frontend: 2/2 PASS
-- **Total: 25/25 PASS**, además de lint limpio y build de producción real.
+## Riesgos conocidos
+1. Primera ejecución de Compose y del CI aún no realizadas (pueden aparecer ajustes de arranque/timing).
+2. Carga medida en 1 VM compartida y con mock; no extrapolar.
+3. Auth stub sin contraseñas (decisión del alcance).
+4. Las versiones de GitHub Actions no se verificaron en línea.

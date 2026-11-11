@@ -1,4 +1,5 @@
-import { formatDuration, formatTravelDate } from "../../lib/format";
+import { formatDuration } from "../../lib/format";
+import { formatDateTime } from "../../lib/schedule";
 import type { ItinerarySummary } from "./summary";
 
 interface SummaryCardsProps {
@@ -27,7 +28,7 @@ export function SummaryCards({ summary, airportCount }: SummaryCardsProps) {
       stats.push({
         label: "Próximo viaje",
         value: `${summary.next.origin.iata_code} → ${summary.next.destination.iata_code}`,
-        hint: formatTravelDate(summary.next.travel_date),
+        hint: formatDateTime(summary.next.departure_at),
       });
     }
     if (summary.total > 0) {

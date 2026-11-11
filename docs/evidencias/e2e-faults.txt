@@ -1,0 +1,15 @@
+# 2026-11-04T16:14:45-05:00 - procesos nativos tras tools/fault_proxy.py (pila actualizada: fastapi 0.162 / starlette 1.10 / PyJWT)
+[PASS] Precondicion: crear itinerario sin fallos -> 201 - HTTP 201
+[PASS] A1. Airport lento: POST responde 502 (no cuelga) en tiempo acotado - HTTP 502 en 4.4s
+[PASS] A2. Circuito ABIERTO: falla al instante sin esperar al servicio - HTTP 502 en 3 ms
+[PASS] A3. Las operaciones que no dependen de Airport siguen funcionando (GET lista) - HTTP 200
+   ... esperando 32s a que el circuito pase a half-open
+[PASS] A4. Recuperacion: al volver Airport el POST vuelve a 201 sin reiniciar nada - HTTP 201 en 0.1s
+[PASS] B1. BD caida: GET responde 503 (no 500) y rapido - HTTP 503 en 0.0s
+[PASS] B2. BD caida: POST responde 503 y NO deja nada a medias - HTTP 503
+[PASS] B3. Recuperacion: al volver la BD, GET vuelve a 200 sin reiniciar - HTTP 200
+[PASS] B4. BD que no responde (agujero negro): la peticion NO queda colgada indefinidamente - HTTP 503 en 8.0s
+[PASS] C1. Redis caido: aeropuertos siguen respondiendo 200 (cache = miss) - HTTP 200 en 0.0s
+[PASS] D1. Proveedor caido + Redis vacio: se sirve desde PostgreSQL (respaldo durable) - HTTP 200 en 3.3s
+
+Resumen: 11 PASS, 0 FAIL, 0 SKIP

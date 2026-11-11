@@ -1,0 +1,15 @@
+# 2026-11-04T16:17:56-05:00 - todas las suites; integracion con PostgreSQL 16 real (TEST_DATABASE_URL)
+=== airport-service
+20 passed, 1 warning in 0.57s
+=== itinerary-service
+60 passed, 1 warning in 1.48s
+=== auth-stub
+10 passed, 5 warnings in 0.44s
+=== notification-function
+60 passed in 1.88s
+=== frontend
+ Test Files  10 passed (10)
+      Tests  72 passed (72)
+tsc OK
+eslint OK (0 avisos)
+found 0 vulnerabilities

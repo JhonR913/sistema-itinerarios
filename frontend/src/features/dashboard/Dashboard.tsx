@@ -3,11 +3,12 @@ import { Icon } from "../../components/ui/Icon";
 import { StateMessage } from "../../components/ui/StateMessage";
 import { sanitizeAirports } from "../airports/coordinates";
 import { useAirports } from "../airports/useAirports";
-import { useAuth } from "../auth/AuthContext";
+import { useAuth } from "../auth/authContextValue";
 import { LoginForm } from "../auth/LoginForm";
 import { ItineraryDetail } from "../itineraries/ItineraryDetail";
 import { ItineraryForm } from "../itineraries/ItineraryForm";
 import { ItineraryList } from "../itineraries/ItineraryList";
+import { TripAlerts } from "../itineraries/TripAlerts";
 import { SummaryCards } from "../itineraries/SummaryCards";
 import { summarizeItineraries } from "../itineraries/summary";
 import { useItineraries } from "../itineraries/useItineraries";
@@ -20,7 +21,7 @@ import { buildRoutes } from "../map/routes";
  * detalle para que los tres permanezcan sincronizados.
  */
 export function Dashboard() {
-  const { username, token } = useAuth();
+  const { username, token, email } = useAuth();
   const airportsState = useAirports();
   const { airports } = airportsState;
   const itinerariesState = useItineraries(token);
@@ -99,6 +100,8 @@ export function Dashboard() {
 
           {isLoggedIn && (
             <>
+              <TripAlerts next={summary?.next ?? null} hasEmail={Boolean(email)} />
+
               {selected && (
                 <ItineraryDetail key={selected.id} itinerary={selected} onBack={clearSelection} onDelete={handleDelete} />
               )}
@@ -123,7 +126,7 @@ export function Dashboard() {
                 </header>
 
                 {showForm && username && (
-                  <ItineraryForm airports={airports} username={username} onSubmit={handleCreate} />
+                  <ItineraryForm airports={airports} username={username} itineraries={itineraries} onSubmit={handleCreate} />
                 )}
 
                 {itinerariesState.isLoading && itineraries.length === 0 && (

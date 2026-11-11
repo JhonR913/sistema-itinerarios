@@ -1,9 +1,9 @@
 """Prueba del adapter real (JwtTokenIssuer) con un secreto de prueba.
-No usa red ni Redis: pura criptografia, con la misma libreria (python-jose)
+No usa red ni Redis: pura criptografia, con la misma libreria (PyJWT)
 que Itinerary Service usa para VALIDAR, cerrando el circulo de confianza."""
 from datetime import datetime, timezone
 
-from jose import jwt
+import jwt
 
 from app.domain.models import UsernameClaim
 from app.infrastructure.adapters.jwt_issuer import JwtTokenIssuer
@@ -27,7 +27,7 @@ def test_token_signed_with_wrong_secret_fails_validation():
     issuer = JwtTokenIssuer(TEST_SECRET)
     token = issuer.issue(UsernameClaim(username="jhon.ramirez"))
 
-    from jose.exceptions import JWTError
+    from jwt.exceptions import PyJWTError as JWTError
     import pytest
     with pytest.raises(JWTError):
         jwt.decode(token, "otro-secreto-incorrecto", algorithms=["HS256"])

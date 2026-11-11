@@ -1,28 +1,44 @@
-
 services:
   airport-service:
     build: .
     env_file: .env
     ports:
-      - "8001:8000"
+      - "127.0.0.1:8001:8000"
     depends_on:
-      - redis-airport
-      - postgres-airport
+      postgres-airport:
+        condition: service_healthy
+      redis-airport:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+    restart: unless-stopped
     networks: [itinerarios-net]
 
   redis-airport:
     image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
     networks: [itinerarios-net]
 
   postgres-airport:
     image: postgres:16-alpine
-    env_file: .env
-    environment:
-      POSTGRES_DB: airport
-      POSTGRES_USER: airport
+    env_file: db.env
     volumes:
       - airport-db-data:/var/lib/postgresql/data
-      - ./migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
     networks: [itinerarios-net]
 
 volumes:

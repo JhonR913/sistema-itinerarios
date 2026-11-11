@@ -4,7 +4,7 @@ app/infrastructure/api/security.py en itinerary-service: mismo
 JWT_SECRET, ambos lo validan de forma independiente -> zero trust)."""
 from datetime import datetime, timedelta, timezone
 
-from jose import jwt
+import jwt
 
 from app.domain.models import UsernameClaim
 from app.domain.ports import TokenIssuerPort
@@ -23,4 +23,6 @@ class JwtTokenIssuer(TokenIssuerPort):
             "iat": now,
             "exp": now + timedelta(minutes=TOKEN_TTL_MINUTES),
         }
+        if claim.email:
+            payload["email"] = claim.email
         return jwt.encode(payload, self._secret, algorithm="HS256")

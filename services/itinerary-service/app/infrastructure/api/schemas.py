@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import datetime
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -6,7 +6,7 @@ class CreateItineraryRequest(BaseModel):
     nombre_usuario: str = Field(..., min_length=1, max_length=120)
     origin_airport_id: str = Field(..., min_length=1)
     destination_airport_id: str = Field(..., min_length=1)
-    travel_date: date
+    departure_at: datetime = Field(..., description="Salida con fecha, hora y zona (ISO 8601, ej. 2026-12-01T06:00:00-05:00)")
     duration_minutes: int = Field(..., gt=0, le=2880)
 
     @field_validator("nombre_usuario")
@@ -18,7 +18,7 @@ class CreateItineraryRequest(BaseModel):
 
 
 class UpdateItineraryRequest(BaseModel):
-    travel_date: date | None = None
+    departure_at: datetime | None = None
     duration_minutes: int | None = Field(default=None, gt=0, le=2880)
     origin_airport_id: str | None = None
     destination_airport_id: str | None = None

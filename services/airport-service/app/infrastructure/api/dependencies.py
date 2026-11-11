@@ -19,4 +19,7 @@ def get_airport_durable_store() -> AirportDurableStorePort:
 
 @lru_cache
 def get_airport_repository() -> AirportRepositoryPort:
-    return ApiColombiaAdapter(cache=get_airport_cache(), durable_store=get_airport_durable_store())
+    return ApiColombiaAdapter(
+        cache=get_airport_cache(), durable_store=get_airport_durable_store(),
+        base_url=settings.api_colombia_base_url,
+    )

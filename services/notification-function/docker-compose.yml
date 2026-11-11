@@ -1,14 +1,15 @@
-
 services:
   postgres-notification:
     image: postgres:16-alpine
-    env_file: .env
-    environment:
-      POSTGRES_DB: notification
-      POSTGRES_USER: notif
+    env_file: db.env
     volumes:
       - notification-db-data:/var/lib/postgresql/data
-      - ./migration.sql:/docker-entrypoint-initdb.d/001_init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
     networks: [itinerarios-net]
 
   # OpenFaaS real requiere su stack completo (gateway + faas-cli).
@@ -17,7 +18,38 @@ services:
   send-notification-function:
     build: .
     env_file: .env
-    depends_on: [postgres-notification]
+    depends_on:
+      postgres-notification:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+    networks: [itinerarios-net]
+
+  # Proceso programado de recordatorios: envia por SMTP los vencidos.
+  reminder-worker:
+    build: .
+    env_file: .env
+    command: ["sh", "-c", "alembic upgrade head && exec python reminder_worker.py"]
+    depends_on:
+      postgres-notification:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+    restart: unless-stopped
+    networks: [itinerarios-net]
+
+  # SMTP de desarrollo: captura los correos, no los entrega a nadie.
+  mailpit:
+    image: axllent/mailpit:v1.21
+    ports:
+      - "127.0.0.1:8025:8025"   # interfaz web para ver los correos
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped
     networks: [itinerarios-net]
 
 volumes:
