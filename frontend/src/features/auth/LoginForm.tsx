@@ -1,9 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { Icon } from "../../components/ui/Icon";
 import { useAuth } from "./authContextValue";
+import { isValidEmail } from "../../lib/email";
 import { LOGIN_INPUT_ID } from "./constants";
-
-const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 /** Panel de acceso. Solo se muestra sin sesión; el contrato con /api/auth/token no cambia. */
 export function LoginForm() {
@@ -21,7 +20,7 @@ export function LoginForm() {
       return;
     }
     const emailValue = email.trim();
-    if (emailValue && !EMAIL_PATTERN.test(emailValue)) {
+    if (emailValue && !isValidEmail(emailValue)) {
       setError("El correo no parece válido (o déjalo vacío).");
       return;
     }

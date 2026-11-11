@@ -88,7 +88,8 @@ describe("sanitizeAirports", () => {
 
   it("does not mutate the input", () => {
     const input = [airport("BOG", "4.70", "-74.15")];
+    const before = input[0].latitude;
     sanitizeAirports(input);
-    expect(input[0].latitude).toBe("4.70");
+    expect(input[0].latitude).toBe(before);
   });
 });

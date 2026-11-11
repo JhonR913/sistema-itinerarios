@@ -50,13 +50,22 @@ def test_initial_status_rules():
     assert reminders.initial_status("a@b.co", date(2026, 10, 1), "America/Bogota", now) == "SKIPPED"
 
 
-@pytest.mark.parametrize("bad", [None, "", "sin-arroba", "a@b", "a b@c.com", "x@y.com\nBcc: z@w.com", 5, "a" * 260 + "@b.com"])
+@pytest.mark.parametrize("bad", [None, "", "sin-arroba", "a@b", "a b@c.com", "x@y.com\nBcc: z@w.com", 5, "a" * 260 + "@b.com",
+                                 "a@b.co\n", "a@@b.co", "@b.co", "a@.co", "a@b.", "a" * 65 + "@b.co", "a@b .co"])
 def test_valid_email_rejects_garbage_and_header_injection(bad):
     assert reminders.valid_email(bad) is None
 
 
-def test_valid_email_accepts_normal_address():
-    assert reminders.valid_email("jhon@example.com") == "jhon@example.com"
+@pytest.mark.parametrize("good", ["jhon@example.com", "a@b.co", "primer.apellido+tag@sub.dominio.com.co", "a" * 64 + "@b.co", "a@b..c"])
+def test_valid_email_accepts_normal_address(good):
+    assert reminders.valid_email(good) == good
+
+
+def test_valid_email_is_linear_on_pathological_input():
+    import time
+    t0 = time.perf_counter()
+    assert reminders.valid_email("a@" + "." * 50_000 + "!" * 50_000 + " ") is None
+    assert time.perf_counter() - t0 < 0.5
 
 
 def test_reminder_email_content_and_headers():
