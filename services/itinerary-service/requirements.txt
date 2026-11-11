@@ -1,5 +1,5 @@
 fastapi==0.162.0
-uvicorn[standard]==0.30.6
+uvicorn[standard]==0.54.0
 httpx==0.28.1
 pybreaker==1.2.0
 tenacity==9.0.0
