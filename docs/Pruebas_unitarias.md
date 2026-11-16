@@ -23,7 +23,7 @@ Evidencias y resultados de las pruebas unitarias funcionales (paso a paso con ca
 | **Resultado** | El formulario se muestra con los datos diligenciados y el aviso de que se enviará un código para confirmar el correo. El resultado del envío se evidencia en PU-02. |
 | **Evidencia** | Figura 1 |
 
-![Figura 1. PU-01 — Formulario «Crea tu cuenta»](img/image1.png)
+![Figura 1. PU-01 — Formulario «Crea tu cuenta»](image1.png)
 
 *Figura 1. PU-01 — Formulario «Crea tu cuenta».* Imagen sin título en el documento original; descrita según su contenido visible.
 
@@ -36,7 +36,7 @@ Evidencias y resultados de las pruebas unitarias funcionales (paso a paso con ca
 | **Resultado** | El sistema muestra el mensaje «Te enviamos un código de 6 dígitos. Revisa tu correo (y la carpeta de spam).», el campo «Código», el botón «Verificar», el aviso de vencimiento en 10 minutos y las opciones «Reenviar código» y «Cambiar correo». |
 | **Evidencia** | Figura 2 |
 
-![Figura 2. PU-02 — Pantalla «Verifica tu correo»](img/image2.png)
+![Figura 2. PU-02 — Pantalla «Verifica tu correo»](image2.png)
 
 *Figura 2. PU-02 — Pantalla «Verifica tu correo».*
 
@@ -49,7 +49,7 @@ Evidencias y resultados de las pruebas unitarias funcionales (paso a paso con ca
 | **Resultado** | El vuelo BOG → VUP (Bogotá D.C. → Valledupar, mar 17 de nov, 01:27 → 02:17, 50 min) queda en «Mis itinerarios» (1 guardado) y se dibuja en el mapa. El sistema informa que el vuelo sale en 16 h 0 min y que enviará un recordatorio por correo 24 h antes de cada salida. |
 | **Evidencia** | Figura 3 |
 
-![Figura 3. PU-03 — Itinerario guardado BOG → VUP](img/image3.png)
+![Figura 3. PU-03 — Itinerario guardado BOG → VUP](image3.png)
 
 *Figura 3. PU-03 — Itinerario guardado BOG → VUP.*
 
@@ -62,7 +62,7 @@ Evidencias y resultados de las pruebas unitarias funcionales (paso a paso con ca
 | **Resultado** | Se muestra el error «El aeropuerto de salida y llegada no pueden ser el mismo.» y el botón «Guardar vuelo» aparece atenuado. |
 | **Evidencia** | Figura 4 |
 
-![Figura 4. PU-04 — Error por aeropuertos iguales](img/image4.png)
+![Figura 4. PU-04 — Error por aeropuertos iguales](image4.png)
 
 *Figura 4. PU-04 — Error por aeropuertos iguales.*
 
@@ -75,7 +75,7 @@ Evidencias y resultados de las pruebas unitarias funcionales (paso a paso con ca
 | **Resultado** | El mapa resalta la ruta seleccionada y el panel «Itinerario seleccionado» muestra: BOG → VUP; salida desde Aeropuerto Internacional El Dorado; llegada a Aeropuerto Alfonso López Pumarejo; sale mar 17 de nov, 01:27; llega mar 17 de nov, 02:17; duración 50 min. El panel ofrece «Vista general», «Sí, eliminar» y «Cancelar». |
 | **Evidencia** | Figura 5 |
 
-![Figura 5. PU-05 — Panel «Itinerario seleccionado»](img/image5.png)
+![Figura 5. PU-05 — Panel «Itinerario seleccionado»](image5.png)
 
 *Figura 5. PU-05 — Panel «Itinerario seleccionado».* Imagen sin título en el documento original; descrita según su contenido visible.
 
@@ -88,7 +88,7 @@ Evidencias y resultados de las pruebas unitarias funcionales (paso a paso con ca
 | **Resultado** | Se muestra el error «Se cruza con tu vuelo Bogotá D.C. → Rionegro (mié, 18 de nov, 09:32 a 10:17).» y el botón «Guardar vuelo» aparece atenuado. |
 | **Evidencia** | Figura 6 |
 
-![Figura 6. PU-06 — Error por cruce de horarios](img/image6.png)
+![Figura 6. PU-06 — Error por cruce de horarios](image6.png)
 
 *Figura 6. PU-06 — Error por cruce de horarios.*
 
@@ -101,6 +101,6 @@ Evidencias y resultados de las pruebas unitarias funcionales (paso a paso con ca
 | **Resultado** | Se muestra el error «Tu siguiente vuelo sale de Bogotá D.C. (mié, 18 de nov, 09:32); este vuelo debe terminar allí.» y el botón «Guardar vuelo» aparece atenuado. |
 | **Evidencia** | Figura 7 |
 
-![Figura 7. PU-07 — Error de continuidad de la agenda](img/image7.png)
+![Figura 7. PU-07 — Error de continuidad de la agenda](image7.png)
 
 *Figura 7. PU-07 — Error de continuidad de la agenda.*
