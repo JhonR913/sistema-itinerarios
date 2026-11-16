@@ -12,3 +12,4 @@ include:
   - services/itinerary-service/docker-compose.yml
   - services/notification-function/docker-compose.yml
   - frontend/docker-compose.yml
+  - gateway/cloudflared/docker-compose.yml

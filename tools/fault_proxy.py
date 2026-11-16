@@ -140,4 +140,4 @@ if __name__ == "__main__":
         threading.Thread(target=_listen, args=(int(port),), daemon=True).start()
         print(f"proxy :{port} -> {host}:{tport}", flush=True)
     print(f"admin en :{args.admin}", flush=True)
-    ThreadingHTTPServer(("0.0.0.0", args.admin), Admin).serve_forever()  # nosec B104
+    ThreadingHTTPServer(("0.0.0.0", args.admin), Admin).serve_forever()  # nosec B104  # NOSONAR: herramienta de pruebas local, solo datos de prueba (no se despliega)

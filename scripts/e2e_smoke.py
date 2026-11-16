@@ -101,18 +101,65 @@ def wait_for(fn, timeout=40, every=1.0):
     return None
 
 
+PASSWORD = "clave-e2e-segura-123"  # nosec B105  # NOSONAR: credencial de prueba de una cuenta efimera
+
+
+def read_code(email, subject_prefix="Tu código de verificación", timeout=20):
+    """Lee el codigo de 6 digitos del ultimo correo recibido en Mailpit para `email`."""
+    def look():
+        code, inbox = http("GET", f"{MAILPIT}/api/v1/messages")
+        if code != 200 or not isinstance(inbox, dict):
+            return None
+        for m in inbox.get("messages", []):   # Mailpit lista primero el mas reciente
+            to = [t.get("Address", "").lower() for t in m.get("To", [])]
+            subject = m.get("Subject") or ""
+            if email in to and subject.startswith(subject_prefix):
+                return subject.rsplit(" ", 1)[-1]
+        return None
+    return wait_for(look, timeout=timeout, every=0.5)
+
+
+def sign_in(email, name="Viajero E2E"):
+    """Registro real: /register -> codigo por correo (Mailpit) -> /verify. Devuelve el JWT o None."""
+    code, _ = http("POST", f"{AUTH}/api/auth/register", {"email": email, "name": name, "password": PASSWORD})
+    if code != 202:
+        return None
+    digits = read_code(email)
+    if not digits:
+        return None
+    code, body = http("POST", f"{AUTH}/api/auth/verify", {"email": email, "code": digits})
+    return body.get("access_token") if code == 200 and isinstance(body, dict) else None
+
+
 def main():
     user = f"demo-{uuid.uuid4().hex[:6]}"
+    email = f"{user}@example.com"
 
     for name, base in (("auth-stub", AUTH), ("airport-service", AIRPORT), ("itinerary-service", ITIN)):
         if not GATEWAY:
             code, _ = http("GET", f"{base}/health")
             step(f"{name} /health", code == 200, f"HTTP {code}")
 
-    code, body = http("POST", f"{AUTH}/api/auth/token", {"username": user, "email": f"{user}@example.com"})
-    token = body.get("access_token") if code == 200 and isinstance(body, dict) else None
-    if not step("1. Login (POST /api/auth/token) devuelve JWT", bool(token), f"HTTP {code}"):
+    code, _ = http("POST", f"{AUTH}/api/auth/register", {"email": email, "name": user, "password": PASSWORD})
+    step("1a. Registro (POST /api/auth/register) -> 202 y se envia un codigo", code == 202, f"HTTP {code}")
+    code, _ = http("POST", f"{AUTH}/api/auth/login", {"email": email, "password": PASSWORD})
+    step("1b. Sin verificar el correo, el login se rechaza (403)", code == 403, f"HTTP {code}")
+    digits = read_code(email)
+    if not step("1c. El codigo de verificacion llega al buzon (Mailpit)", bool(digits), "" if digits else "sin correo"):
         return finish()
+    wrong = "000000" if digits != "000000" else "111111"
+    code, _ = http("POST", f"{AUTH}/api/auth/verify", {"email": email, "code": wrong})
+    step("1d. Un codigo incorrecto se rechaza (400)", code == 400, f"HTTP {code}")
+    code, body = http("POST", f"{AUTH}/api/auth/verify", {"email": email, "code": digits})
+    token = body.get("access_token") if code == 200 and isinstance(body, dict) else None
+    if not step("1e. Verificar con el codigo correcto devuelve JWT", bool(token), f"HTTP {code}"):
+        return finish()
+    code, body = http("POST", f"{AUTH}/api/auth/login", {"email": email, "password": PASSWORD})
+    step("1f. Login con correo y contrasena devuelve JWT", code == 200 and bool(body.get("access_token")), f"HTTP {code}")
+    code, _ = http("POST", f"{AUTH}/api/auth/login", {"email": email, "password": "contrasena-equivocada-1"})  # nosec B105  # NOSONAR
+    step("1g. Contrasena incorrecta -> 401", code == 401, f"HTTP {code}")
+    code, _ = http("POST", f"{AUTH}/api/auth/token", {"username": user})
+    step("1h. El endpoint antiguo sin contrasena (/token) ya no existe", code in (404, 405), f"HTTP {code}")
 
     code, airports = http("GET", f"{AIRPORT}/api/airports")
     ok = code == 200 and isinstance(airports, list) and len(airports) >= 2
@@ -134,8 +181,8 @@ def main():
     step("5. GET detalle del itinerario persistido", code == 200 and detail["origin"]["iata_code"] == origin["iata_code"],
          f"HTTP {code}")
 
-    _, other = http("POST", f"{AUTH}/api/auth/token", {"username": user + "-intruso"})
-    code, _ = http("GET", f"{ITIN}/api/itineraries/{itin_id}", token=other["access_token"])
+    other = sign_in(f"{user}-intruso@example.com")
+    code, _ = http("GET", f"{ITIN}/api/itineraries/{itin_id}", token=other)
     step("6. Otro usuario no ve el itinerario (anti-IDOR)", code == 404, f"HTTP {code}")
 
     code, _ = http("POST", f"{ITIN}/api/itineraries", {**payload, "destination_airport_id": origin["id"]}, token)
@@ -181,7 +228,6 @@ def main():
         step("10-11. Idempotencia y DLQ via RabbitMQ", False, "define RABBIT_USER/RABBIT_PASS", skip=True)
 
     # --- Sprint 6: recordatorios (viaje manana + 24 h de antelacion = vence ya)
-    email = f"{user}@example.com"
     if sql(NOTIF_SQL, "SELECT 1") is None:
         step("12-15. Recordatorios", False, "sin acceso a la BD", skip=True)
     else:
@@ -191,7 +237,8 @@ def main():
         if code != 200:
             step("13. El correo llega al buzon SMTP (Mailpit)", False, f"sin acceso a {MAILPIT}", skip=True)
         else:
-            mine = [m for m in inbox.get("messages", []) if any(t["Address"] == email for t in m["To"])]
+            mine = [m for m in inbox.get("messages", [])
+                    if any(t["Address"] == email for t in m["To"]) and (m.get("Subject") or "").startswith("Recordatorio")]
             step("13. El correo llega al buzon SMTP (exactamente 1, sin duplicados)", len(mine) == 1,
                  f"mensajes para {email}: {len(mine)}")
         code, _ = http("PUT", f"{ITIN}/api/itineraries/{itin_id}", {"departure_at": DEP_30}, token)

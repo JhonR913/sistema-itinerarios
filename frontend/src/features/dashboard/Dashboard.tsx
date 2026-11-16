@@ -4,7 +4,7 @@ import { StateMessage } from "../../components/ui/StateMessage";
 import { sanitizeAirports } from "../airports/coordinates";
 import { useAirports } from "../airports/useAirports";
 import { useAuth } from "../auth/authContextValue";
-import { LoginForm } from "../auth/LoginForm";
+import { AuthPanel } from "../auth/AuthPanel";
 import { ItineraryDetail } from "../itineraries/ItineraryDetail";
 import { ItineraryForm } from "../itineraries/ItineraryForm";
 import { ItineraryList } from "../itineraries/ItineraryList";
@@ -21,7 +21,7 @@ import { buildRoutes } from "../map/routes";
  * detalle para que los tres permanezcan sincronizados.
  */
 export function Dashboard() {
-  const { username, token, email } = useAuth();
+  const { username, token, email, restoring } = useAuth();
   const airportsState = useAirports();
   const { airports } = airportsState;
   const itinerariesState = useItineraries(token);
@@ -96,7 +96,8 @@ export function Dashboard() {
         />
 
         <aside className="side" id="itinerarios" aria-label="Itinerarios">
-          {!isLoggedIn && <LoginForm />}
+          {!isLoggedIn && !restoring && <AuthPanel />}
+          {!isLoggedIn && restoring && <StateMessage variant="loading" title="Recuperando tu sesión…" />}
 
           {isLoggedIn && (
             <>

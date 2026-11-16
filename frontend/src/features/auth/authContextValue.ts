@@ -1,12 +1,17 @@
 import { createContext, useContext } from "react";
+import type { SessionResponse } from "../../api/authApi";
 
 export interface AuthContextValue {
   token: string | null;
+  /** Nombre que eligió al registrarse. */
   username: string | null;
-  /** Correo con el que se inició sesión (solo en memoria); habilita los recordatorios. */
+  /** Correo VERIFICADO de la cuenta: a él llegan los recordatorios. */
   email: string | null;
-  login: (username: string, email?: string) => Promise<void>;
-  logout: () => void;
+  /** true mientras se intenta recuperar la sesión de la cookie al abrir la página. */
+  restoring: boolean;
+  /** Guarda en memoria la sesión que devolvió el servidor (login o verificación). */
+  startSession: (session: SessionResponse) => void;
+  logout: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextValue | undefined>(undefined);

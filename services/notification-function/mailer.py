@@ -2,6 +2,7 @@
 (`SMTP_HOST=mailpit`, puerto 1025, sin autenticacion ni TLS)."""
 import os
 import smtplib
+import ssl
 from datetime import date, datetime
 from typing import Optional
 from zoneinfo import ZoneInfo
@@ -43,7 +44,7 @@ def send(msg: EmailMessage) -> None:
     port = int(os.environ.get("SMTP_PORT", "1025"))
     with smtplib.SMTP(host, port, timeout=10) as smtp:
         if os.environ.get("SMTP_STARTTLS", "0") == "1":
-            smtp.starttls()
+            smtp.starttls(context=ssl.create_default_context())  # verifica el certificado del servidor
         user = os.environ.get("SMTP_USER")
         if user:
             smtp.login(user, os.environ.get("SMTP_PASSWORD", ""))

@@ -51,4 +51,4 @@ class Handler(BaseHTTPRequestHandler):
 if __name__ == "__main__":
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 9000
     print(f"mock API Colombia en http://0.0.0.0:{port}/api/v1/Airport (DATOS DE PRUEBA)", flush=True)  # nosec B104
-    ThreadingHTTPServer(("0.0.0.0", port), Handler).serve_forever()  # nosec B104
+    ThreadingHTTPServer(("0.0.0.0", port), Handler).serve_forever()  # nosec B104  # NOSONAR: herramienta de pruebas local, solo datos de prueba (no se despliega)

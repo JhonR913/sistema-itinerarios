@@ -1,6 +1,7 @@
 """Prueba de carga (Locust) de Itinerary Service con el flujo REAL de un usuario:
 
-  on_start: POST /api/auth/token (auth-stub) -> JWT propio por usuario virtual
+  on_start: firma un JWT propio por usuario virtual con JWT_SECRET (hace de emisor de
+            confianza: registrar miles de cuentas con codigo por correo no es lo que se mide)
             GET  /api/airports (airport-service) -> IDs reales de aeropuertos
   tareas:   crear (peso 3) / listar (5) / detalle (3) / actualizar (1) / borrar (1)
 
@@ -8,7 +9,7 @@ Cada usuario virtual opera SOLO sobre sus propios itinerarios (anti-IDOR real).
 Cada creacion escribe en PostgreSQL + outbox y dispara el flujo
 outbox -> RabbitMQ -> notificacion, es decir ejercita toda la cadena asincrona.
 
-Variables:  AUTH_URL (def. http://localhost:8003)  AIRPORT_URL (def. http://localhost:8001)
+Variables:  JWT_SECRET (obligatoria; la misma de itinerary-service)  AIRPORT_URL (def. http://localhost:8001)
 Host de Locust = Itinerary Service (def. http://localhost:8002).
 NOTA: NO apuntar a traves de Traefik con muchos usuarios: el rate limit del
 gateway (20 req/s promedio por IP, burst 40) devolveria 429 por diseno.
@@ -21,10 +22,11 @@ import random
 import uuid
 from datetime import datetime, timedelta, timezone
 
+import jwt
 import requests
 from locust import HttpUser, between, task
 
-AUTH_URL = os.environ.get("AUTH_URL", "http://localhost:8003")
+JWT_SECRET = os.environ["JWT_SECRET"]
 AIRPORT_URL = os.environ.get("AIRPORT_URL", "http://localhost:8001")
 
 
@@ -33,9 +35,10 @@ class ItineraryServiceUser(HttpUser):
 
     def on_start(self):
         self.username = f"locust-{uuid.uuid4().hex[:8]}"
-        token = requests.post(f"{AUTH_URL}/api/auth/token", json={"username": self.username}, timeout=10)
-        token.raise_for_status()
-        self.headers = {"Authorization": f"Bearer {token.json()['access_token']}"}
+        now = datetime.now(timezone.utc)
+        claims = {"sub": str(uuid.uuid4()), "email": f"{self.username}@example.com", "name": self.username,
+                  "iat": now, "exp": now + timedelta(hours=2)}
+        self.headers = {"Authorization": "Bearer " + jwt.encode(claims, JWT_SECRET, algorithm="HS256")}
         airports = requests.get(f"{AIRPORT_URL}/api/airports", timeout=30)
         airports.raise_for_status()
         self.airport_ids = [a["id"] for a in airports.json()]

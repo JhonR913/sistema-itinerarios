@@ -1,28 +1,27 @@
-"""Implementa TokenIssuerPort emitiendo JWT HS256. El 'sub' del token es
-el username; Itinerary Service lo lee como user_id (ver
-app/infrastructure/api/security.py en itinerary-service: mismo
-JWT_SECRET, ambos lo validan de forma independiente -> zero trust)."""
+"""Implementa TokenIssuerPort emitiendo JWT HS256. El 'sub' es el id del usuario;
+itinerary-service lo lee como user_id (mismo JWT_SECRET, ambos lo validan por
+separado -> zero trust). Solo se emite para usuarios con correo VERIFICADO, asi
+que el claim `email` es confiable para los recordatorios."""
 from datetime import datetime, timedelta, timezone
 
 import jwt
 
-from app.domain.models import UsernameClaim
+from app.domain.models import User
 from app.domain.ports import TokenIssuerPort
-
-TOKEN_TTL_MINUTES = 60
 
 
 class JwtTokenIssuer(TokenIssuerPort):
-    def __init__(self, secret: str):
+    def __init__(self, secret: str, ttl_minutes: int = 30):
         self._secret = secret
+        self._ttl = ttl_minutes
 
-    def issue(self, claim: UsernameClaim) -> str:
+    def issue(self, user: User) -> str:
         now = datetime.now(timezone.utc)
         payload = {
-            "sub": claim.username,
+            "sub": user.id,
+            "email": user.email,
+            "name": user.name,
             "iat": now,
-            "exp": now + timedelta(minutes=TOKEN_TTL_MINUTES),
+            "exp": now + timedelta(minutes=self._ttl),
         }
-        if claim.email:
-            payload["email"] = claim.email
         return jwt.encode(payload, self._secret, algorithm="HS256")

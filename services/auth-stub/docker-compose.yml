@@ -1,17 +1,50 @@
 services:
+  # Servicio de identidad: registro con codigo por correo, login y sesion.
+  # Aplica las migraciones Alembic al arrancar.
   auth-stub:
     build: .
     env_file: .env
+    environment:
+      # Correo: por defecto Mailpit (desarrollo). En produccion se definen en el archivo
+      # prod.env del servidor (ver docs/despliegue.md); nunca en el repositorio.
+      SMTP_HOST: ${SMTP_HOST:-mailpit}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_FROM: ${SMTP_FROM:-itinerarios@localhost}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-0}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      COOKIE_SECURE: ${COOKIE_SECURE:-0}
     ports:
       - "127.0.0.1:8003:8000"
+    depends_on:
+      postgres-auth:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
       interval: 10s
       timeout: 5s
       retries: 6
-      start_period: 10s
+      start_period: 20s
     restart: unless-stopped
     networks: [itinerarios-net]
+
+  postgres-auth:
+    image: postgres:16-alpine
+    env_file: db.env
+    volumes:
+      - auth-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+    networks: [itinerarios-net]
+
+volumes:
+  auth-db-data:
 
 networks:
   itinerarios-net:

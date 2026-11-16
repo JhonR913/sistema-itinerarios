@@ -24,6 +24,19 @@ Los upgrades **no** se aplicaron a ciegas: cada uno se resolvió, se instaló de
 | `gitleaks` | 🟡 | job en CI; no ejecutado en GitHub |
 | `trivy` (imágenes/dependencias) | 🟡 | job en CI (informativo); **no se construyeron imágenes** (sin Docker Hub) |
 
+## Identidad y sesión (cuentas reales)
+| Qué | Estado | Detalle |
+|---|---|---|
+| Contraseñas | ✅ | `scrypt` (N=2^15, r=8, p=3, sal aleatoria, parámetros dentro del hash), comparación en tiempo constante; mínimo 10 caracteres |
+| Verificación del correo | ✅ | código de 6 dígitos, 10 min, un solo uso, **5 intentos contados de forma atómica en SQL** (prueba con 100 hilos: solo 5 pasan), guardado como HMAC-SHA256 con clave del servidor |
+| Sin enumeración de cuentas | ✅ | registro, reenvío y olvido responden igual exista o no la cuenta; login con mensaje único y verificación ficticia si el usuario no existe |
+| Bloqueo y topes | ✅ | 5 contraseñas erróneas → 15 min; 60 s entre códigos, 5/h por correo, 100/h globales (protege la cuota de Gmail y a terceros) |
+| Sesión | ✅ | token de acceso JWT de 30 min **solo en memoria**; sesión de 14 días en cookie `httpOnly` + `SameSite=Strict` + `Secure` (producción), path `/api/auth`, guardada como SHA-256; logout y cambio de contraseña la revocan |
+| Recordatorios solo al correo verificado | ✅ | el claim `email` solo se emite tras verificar; ya no existe `POST /api/auth/token` (probado: 404) |
+| Cabeceras web | ✅ en navegador · 🟡 en nginx real | CSP (sin scripts externos ni inline), `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`; el mapa Plotly funciona bajo esa CSP (Chromium), pero nginx no se ejecutó aquí |
+| SMTP | ✅ | `STARTTLS` con verificación de certificado; los errores no registran credenciales ni el código |
+| Sin captcha, MFA ni límite por IP real | ⏳ decisión | detrás del túnel todos llegan desde un contenedor; mitigar con Cloudflare WAF/Access (ver `despliegue.md` §6) |
+
 ## Infraestructura
 | Qué | Estado |
 |---|---|

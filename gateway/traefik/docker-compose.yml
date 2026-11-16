@@ -9,7 +9,9 @@ services:
       - "--ping=true"
       - "--accesslog=true"
     ports:
-      - "80:80"
+      # Local: abierto en la red. En produccion (WEB_BIND=127.0.0.1) solo el tunel de Cloudflare
+      # y este equipo llegan: el trafico publico entra por cloudflared, no por este puerto.
+      - "${WEB_BIND:-0.0.0.0}:80:80"
     volumes:
       - ./dynamic:/etc/traefik/dynamic:ro
     healthcheck:

@@ -1,5 +1,19 @@
 # Changelog
 
+## [Sin publicar] - Identidad real y despliegue
+
+### Añadido
+- Servicio de identidad (`auth-stub`): registro, verificación del correo con código de 6 dígitos,
+  login con contraseña (scrypt), sesión por cookie `httpOnly`, olvido/cambio de contraseña, bloqueo
+  temporal y topes de envío. PostgreSQL propia con migraciones Alembic. **Elimina** `POST /api/auth/token`.
+- Frontend: pantallas de registro, verificación, login y recuperación; la sesión sobrevive al refrescar.
+- Recordatorios solo al correo verificado (claim `email` del JWT).
+- `docs/despliegue.md`, `scripts/deploy.sh`, `scripts/configure-prod.sh`, `deploy.yml`, servicio `cloudflared`
+  (perfil `tunnel`), cabeceras de seguridad en nginx, SMTP con verificación de certificado.
+
+### Cambiado
+- Pruebas E2E y de carga usan el flujo real (registro + código en Mailpit; Locust firma sus propios JWT).
+
 ## [1.0.0] - Primer release funcional completo
 
 ### Añadido

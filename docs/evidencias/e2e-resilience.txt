@@ -1,4 +1,3 @@
-# 2026-11-04T16:17:56-05:00 - procesos nativos; RabbitMQ detenido con rabbitmqctl stop_app
 -> RabbitMQ detenido
 [PASS] A. Con el broker caido la API acepta 3 itinerarios (201) - creados=3
 [PASS] B. Los eventos quedan PENDING en el outbox (no se pierden) - pendientes=3

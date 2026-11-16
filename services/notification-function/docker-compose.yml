@@ -31,6 +31,15 @@ services:
     build: .
     env_file: .env
     command: ["sh", "-c", "alembic upgrade head && exec python reminder_worker.py"]
+    environment:
+      # Correo: por defecto Mailpit (desarrollo). En produccion se definen en el archivo
+      # prod.env del servidor (ver docs/despliegue.md); nunca en el repositorio.
+      SMTP_HOST: ${SMTP_HOST:-mailpit}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_FROM: ${SMTP_FROM:-itinerarios@localhost}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-0}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
     depends_on:
       postgres-notification:
         condition: service_healthy

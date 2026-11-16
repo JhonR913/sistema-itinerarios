@@ -1,0 +1,49 @@
+# Despliegue continuo: cuando el CI de `main` termina en verde, un runner propio (tu PC con
+# Docker Desktop) construye y levanta la version probada. No expone puertos: el sitio sale a
+# Internet por el tunel de Cloudflare (servicio `cloudflared`). Ver docs/despliegue.md.
+#
+# Este workflow NUNCA se dispara con pull requests: un runner propio ejecuta codigo en tu equipo.
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Un despliegue a la vez; uno nuevo espera al que esta en curso (no lo cancela a medias).
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Desplegar en produccion
+    if: >-
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    runs-on: [self-hosted, itinerarios]
+    environment: production
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # El commit EXACTO que paso el CI (no el ultimo de main, que podria ser otro).
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      # En Windows se usa Git Bash (no el bash de WSL). Ajusta la ruta si instalaste Git en otra.
+      - name: Desplegar (Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          & "C:\Program Files\Git\bin\bash.exe" --noprofile --norc scripts/deploy.sh
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Desplegar (Linux/macOS)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: ./scripts/deploy.sh
