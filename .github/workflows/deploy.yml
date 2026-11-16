@@ -1,8 +1,9 @@
-# Despliegue continuo: cuando el CI de `main` termina en verde, un runner propio (tu PC con
-# Docker Desktop) construye y levanta la version probada. No expone puertos: el sitio sale a
-# Internet por el tunel de Cloudflare (servicio `cloudflared`). Ver docs/despliegue.md.
+
+# Despliegue continuo: cuando el CI de main termina en verde,
+# el runner propio construye y levanta la versión probada.
+# El sitio sale a Internet mediante Cloudflare Tunnel.
 #
-# Este workflow NUNCA se dispara con pull requests: un runner propio ejecuta codigo en tu equipo.
+# Este workflow nunca se dispara con pull requests.
 name: Deploy
 
 on:
@@ -15,7 +16,7 @@ on:
 permissions:
   contents: read
 
-# Un despliegue a la vez; uno nuevo espera al que esta en curso (no lo cancela a medias).
+# Un despliegue a la vez.
 concurrency:
   group: deploy-production
   cancel-in-progress: false
@@ -29,21 +30,30 @@ jobs:
     runs-on: [self-hosted, itinerarios]
     environment: production
     timeout-minutes: 30
+
     steps:
+      # Descarga exactamente el commit que pasó el CI.
       - uses: actions/checkout@v4
         with:
-          # El commit EXACTO que paso el CI (no el ultimo de main, que podria ser otro).
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
-      # En Windows se usa Git Bash (no el bash de WSL). Ajusta la ruta si instalaste Git en otra.
+      # Despliegue en Windows mediante Git Bash.
       - name: Desplegar (Windows)
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          & "C:\Program Files\Git\bin\bash.exe" --noprofile --norc scripts/deploy.sh
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $env:COMPOSE_PROJECT = 'itinerarios-repo'
+          $env:ITINERARIOS_CONFIG_DIR = Join-Path $env:USERPROFILE 'itinerarios-config'
 
+          & "C:\Program Files\Git\bin\bash.exe" --noprofile --norc scripts/deploy.sh
+
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
+
+      # Despliegue en Linux o macOS.
       - name: Desplegar (Linux/macOS)
         if: runner.os != 'Windows'
         shell: bash
-        run: ./scripts/deploy.sh
+        run: |
+          COMPOSE_PROJECT=itinerarios-repo ./scripts/deploy.sh
