@@ -1,0 +1,20 @@
+[OK] registro: pide el codigo de verificacion
+[OK] codigo incorrecto se rechaza con mensaje
+[OK] el codigo llega por correo (Mailpit)
+[OK] verificado: entra con sesion iniciada
+[OK] refrescar la pagina conserva la sesion
+[OK] la cookie de sesion no es legible desde JavaScript
+[OK] nada de tokens en localStorage/sessionStorage
+[OK] cerrar sesion
+[OK] tras cerrar sesion, refrescar NO la recupera
+[OK] contrasena incorrecta se rechaza
+[OK] login con correo y contrasena
+[OK] muestra llegada calculada: Llegas el lun, 30 de nov, 06:50 (50 min de vuelo).
+[OK] vuelo BOG→MDE 06:00 (120 min) guardado
+[OK] sugerencia de dónde puedes salir
+[OK] aviso de traslape en pantalla
+[OK] botón Guardar bloqueado con conflicto
+[OK] aviso de ciudad incorrecta
+[OK] salir de la ciudad de llegada a las 08:00 es válido
+[OK] segundo vuelo MDE→BOG guardado
+[OK] sin errores en consola

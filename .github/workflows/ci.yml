@@ -194,4 +194,6 @@ jobs:
           args: >
             -Dsonar.organization=${{ vars.SONAR_ORGANIZATION }}
             -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }}
-      # Quality Gate: ver el resultado en SonarCloud (o agregar sonar.qualitygate.wait=true).
+            -Dsonar.qualitygate.wait=true
+      # Si el Quality Gate falla, este job falla -> el CI queda en rojo -> NO se despliega (deploy.yml
+      # solo corre cuando el CI termina en verde). Requiere desactivar el "Automatic Analysis" en SonarCloud.

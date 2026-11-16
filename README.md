@@ -13,7 +13,7 @@ cuando se crea cada uno.
 flowchart LR
   U[Navegador] -->|http://localhost| T[Traefik :80<br/>routing + rate limit]
   T -->|/| F[frontend<br/>React+Vite / nginx]
-  T -->|/api/auth| A[auth-stub<br/>emite JWT]
+  T -->|/api/auth| A[auth-stub<br/>identidad + JWT]
   T -->|/api/airports| AP[airport-service]
   T -->|/api/itineraries| I[itinerary-service]
   AP --> R[(redis-airport)]
@@ -32,7 +32,7 @@ flowchart LR
 |---|---|---|
 | `frontend` | Dashboard, mapa de aeropuertos, CRUD de itinerarios | React 18, TypeScript, Vite, Plotly, nginx |
 | `traefik` | Único punto de entrada, rate limit (20 req/s, burst 40) | Traefik 3 (solo proveedor de archivo) |
-| `auth-stub` | Emite JWT HS256 a partir de un nombre de usuario (**sin contraseña**: es un stub) | FastAPI |
+| `auth-stub` | Identidad real: registro con **código por correo**, login con contraseña (scrypt), sesión por cookie `httpOnly`, emite JWT HS256. (El nombre `auth-stub` se conserva por compatibilidad con rutas, CI y documentación; ya no es un stub) | FastAPI + PostgreSQL |
 | `airport-service` | Aeropuertos desde API Colombia con 3 niveles de resiliencia (Redis fresco → Redis stale → PostgreSQL) + circuit breaker | FastAPI, Redis, PostgreSQL |
 | `itinerary-service` | CRUD de itinerarios (anti-IDOR, lista blanca de campos) + *Transactional Outbox* | FastAPI, PostgreSQL |
 | `outbox-worker` | Relay outbox → RabbitMQ (confirms, `SKIP LOCKED`, reconexión) | Python, pika |
@@ -44,9 +44,10 @@ esquema con **Alembic**. Arquitectura hexagonal en los servicios FastAPI
 
 ## Requisitos previos
 
-Docker Desktop (o Engine) con Compose ≥ 2.20 (usa `include:`), `python3`
-(solo para el script de entorno y las pruebas de humo) y, para desarrollar,
-Python 3.11 y Node 20+.
+Docker Desktop (o Engine) con Compose ≥ 2.20 (usa `include:`) y un shell bash
+(Git Bash o WSL en Windows) para `scripts/bootstrap-env.sh` (usa `openssl`, que
+viene con Git Bash; no requiere Python). Python 3 solo hace falta para las pruebas
+de humo (`scripts/e2e_*.py`) y, para desarrollar, Python 3.11 y Node 20+.
 
 ## Arranque
 
@@ -78,7 +79,7 @@ servidor y cliente (idem). Los `.env` reales están en `.gitignore`.
 
 | Archivo | Variables |
 |---|---|
-| `services/auth-stub/.env` | `JWT_SECRET` |
+| `services/auth-stub/.env` | `JWT_SECRET`, `DATABASE_URL` (+ `db.env`), SMTP (en desarrollo Mailpit) |
 | `services/airport-service/.env` | `DATABASE_URL`, `REDIS_URL`, opcional `API_COLOMBIA_BASE_URL` |
 | `services/airport-service/db.env` | `POSTGRES_DB/USER/PASSWORD` |
 | `services/itinerary-service/.env` | `DATABASE_URL`, `RABBITMQ_URL`, `AIRPORT_SERVICE_URL`, `JWT_SECRET` (≥ 32 caracteres, se rechaza si es más corto), opcional `MIN_CONNECTION_MINUTES` (def. 0) |
@@ -98,7 +99,7 @@ No hay datos semilla: los aeropuertos se cargan desde API Colombia en la primera
 
 | Servicio | Endpoints |
 |---|---|
-| auth | `POST /api/auth/token` `{"username": "...", "email": "opcional"}` → `{access_token, token_type, expires_in_minutes}` |
+| auth | `POST /api/auth/register` `{email, name, password}` (202; envía el código) · `POST /api/auth/verify` `{email, code}` → sesión · `POST /api/auth/login` `{email, password}` → `{access_token, token_type, expires_in_minutes, name, email}` (+ cookie `httpOnly`) · `POST /api/auth/refresh` (cookie → nuevo token) · `POST /api/auth/logout` · `POST /api/auth/resend` · `POST /api/auth/forgot` · `POST /api/auth/reset` `{email, code, password}` |
 | airports | `GET /api/airports`, `GET /api/airports/{id}` (503 si el upstream y sus respaldos fallan) |
 | itineraries (Bearer JWT) | `POST /api/itineraries` `{nombre_usuario, origin_airport_id, destination_airport_id, departure_at, duration_minutes}` (201 `{id}`), `GET /api/itineraries` (ordenado por salida; incluye `departure_at` y `arrival_at`), `GET/PUT/DELETE /api/itineraries/{id}` |
 | todos | `GET /health` |
@@ -110,6 +111,14 @@ Errores: 401/403 sin token válido (el token debe traer `exp`), 404 si el itiner
 del usuario o el id no es UUID, 422 validación/aeropuerto inexistente/origen = destino/salida
 sin zona o en el pasado, **409 si el vuelo no es coherente con tu agenda** (ver abajo),
 502 si Airport Service no está disponible, 503 si la base de datos no responde.
+
+## Cuentas y acceso
+Se entra con **correo + contraseña** (mínimo 10 caracteres). Al registrarse llega un **código de 6 dígitos**
+al correo (vence en 10 min, un solo uso, 5 intentos); sin verificarlo no hay sesión. En desarrollo el
+correo lo captura **Mailpit**: <http://localhost:8025>. Hay recuperación de contraseña por código, bloqueo
+temporal tras 5 contraseñas erróneas y sesión que sobrevive al refrescar (cookie `httpOnly`; el token JWT
+vive solo en memoria). Los recordatorios de vuelo van al correo **verificado** de la cuenta.
+Publicación en Internet con dominio propio y despliegue automático: [`docs/despliegue.md`](docs/despliegue.md).
 
 ## Agenda del viajero (un vuelo no puede contradecir a otro)
 
@@ -188,10 +197,10 @@ GitHub Actions (`.github/workflows/ci.yml`): tests backend con Postgres real, fr
 
 ## Limitaciones conocidas
 
-- **`docker compose up` no se pudo ejecutar en el entorno donde se hizo esta entrega** (sin acceso a Docker Hub): se validó `docker compose config`, los lockfiles con `pip --require-hashes` y el sistema completo como procesos nativos. La primera ejecución real de Compose es un paso pendiente (ver matriz).
-- Autenticación = stub sin contraseñas ni registro (decisión documentada). Cualquiera puede obtener un token con cualquier nombre.
-- El correo de recordatorio se probó contra un sumidero SMTP propio (`tools/smtp_sink.py`), **no** contra Mailpit ni un SMTP real (no hay Docker Hub en el entorno de desarrollo).
+- **Compose en desarrollo** lo ejecutó el autor en su equipo (`docker compose up`, todo sano) con la versión anterior; la versión con identidad real, el perfil de producción (`cloudflared`) y el despliegue por runner **no** se han ejecutado todavía en Docker: se probaron los servicios como procesos nativos (ver `docs/despliegue.md`, sección 7).
+- Identidad: sin MFA, sin captcha y sin límite por IP real detrás del túnel (mitigaciones: tope de códigos por correo y global, bloqueo de cuenta; opcional Cloudflare Access/WAF, ver `docs/despliegue.md`).
+- El correo se probó contra un sumidero SMTP propio (`tools/smtp_sink.py`), **no** contra Mailpit ni Gmail real (las credenciales las pone el dueño del sistema).
 - Los horarios son planificados por el usuario (la duración se estima por distancia); no hay datos reales de aerolíneas ni estado de vuelo. Todas las horas se interpretan en Colombia (UTC-5).
-- Sin trazas distribuidas/métricas (solo logs JSON con `X-Trace-Id`); sin despliegue continuo ni URL pública.
+- Sin trazas distribuidas/métricas (solo logs JSON con `X-Trace-Id`). Despliegue continuo y URL pública: definidos en `docs/despliegue.md` pero **no verificados** de extremo a extremo.
 - Rate limit de Traefik por IP: pruebas de carga contra los puertos directos, no por el gateway.
 - Cola con DLQ: si existía una cola `itinerary.events` sin argumentos (versión anterior), borrarla (`docker compose down -v`) para evitar `PRECONDITION_FAILED`.

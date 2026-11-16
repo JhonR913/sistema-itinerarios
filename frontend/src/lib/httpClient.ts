@@ -1,7 +1,7 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
 
 export class ApiError extends Error {
-  constructor(public readonly status: number, message: string) {
+  constructor(public readonly status: number, message: string, public readonly code?: string) {
     super(message);
     this.name = "ApiError";
   }
@@ -23,11 +23,12 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     method: options.method ?? "GET",
     headers,
     body: options.body ? JSON.stringify(options.body) : undefined,
+    credentials: "same-origin", // la cookie de sesión (httpOnly) viaja solo hacia este mismo sitio
   });
 
   if (!response.ok) {
-    const detail = await safeErrorDetail(response);
-    throw new ApiError(response.status, detail);
+    const { detail, code } = await safeError(response);
+    throw new ApiError(response.status, detail, code);
   }
 
   if (response.status === 204) {
@@ -36,11 +37,14 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   return (await response.json()) as T;
 }
 
-async function safeErrorDetail(response: Response): Promise<string> {
+async function safeError(response: Response): Promise<{ detail: string; code?: string }> {
   try {
     const data = await response.json();
-    return typeof data?.detail === "string" ? data.detail : `Error ${response.status}`;
+    return {
+      detail: typeof data?.detail === "string" ? data.detail : `Error ${response.status}`,
+      code: typeof data?.code === "string" ? data.code : undefined,
+    };
   } catch {
-    return `Error ${response.status}`;
+    return { detail: `Error ${response.status}` };
   }
 }

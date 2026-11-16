@@ -1,26 +1,68 @@
+# Dependabot con poco ruido: 1 PR agrupado por ecosistema y por mes (maximo 8 PRs al mes),
+# sin saltos de version MAYOR (esos se revisan a mano: suelen romper cosas).
+# Las vulnerabilidades conocidas siguen generando sus propios PRs de seguridad.
+#
+# Nota Python: los servicios se instalan desde `requirements.lock` (con hashes, generado con
+# `uv pip compile`). Dependabot solo edita `requirements.txt`: al fusionar uno de esos PRs hay
+# que regenerar el lock antes de que tenga efecto real.
 version: 2
 updates:
   - package-ecosystem: pip
     directory: /services/airport-service
-    schedule: {interval: weekly}
+    schedule: {interval: monthly}
+    open-pull-requests-limit: 1
+    groups:
+      python-deps: {patterns: ["*"]}
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: pip
     directory: /services/itinerary-service
-    schedule: {interval: weekly}
+    schedule: {interval: monthly}
+    open-pull-requests-limit: 1
+    groups:
+      python-deps: {patterns: ["*"]}
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: pip
     directory: /services/auth-stub
-    schedule: {interval: weekly}
+    schedule: {interval: monthly}
+    open-pull-requests-limit: 1
+    groups:
+      python-deps: {patterns: ["*"]}
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: pip
     directory: /services/notification-function
-    schedule: {interval: weekly}
+    schedule: {interval: monthly}
+    open-pull-requests-limit: 1
+    groups:
+      python-deps: {patterns: ["*"]}
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: npm
     directory: /frontend
-    schedule: {interval: weekly}
+    schedule: {interval: monthly}
+    open-pull-requests-limit: 1
+    groups:
+      frontend-deps: {patterns: ["*"]}
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
-    schedule: {interval: weekly}
+    schedule: {interval: monthly}
+    open-pull-requests-limit: 1
+    groups:
+      actions: {patterns: ["*"]}
   - package-ecosystem: docker
     directory: /services/itinerary-service
-    schedule: {interval: weekly}
+    schedule: {interval: monthly}
+    open-pull-requests-limit: 1
   - package-ecosystem: docker
     directory: /frontend
-    schedule: {interval: weekly}
+    schedule: {interval: monthly}
+    open-pull-requests-limit: 1

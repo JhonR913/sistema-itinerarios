@@ -25,7 +25,7 @@ rand() {
 # Un secreto por token. Si ya existe un .env, se reutiliza su valor para no
 # romper volumenes de bases de datos ya inicializados con esa clave.
 declare -A SECRET
-for tok in JWT_SECRET AIRPORT_DB_PASSWORD ITINERARY_DB_PASSWORD NOTIFICATION_DB_PASSWORD RABBITMQ_PASSWORD; do
+for tok in JWT_SECRET AUTH_DB_PASSWORD AIRPORT_DB_PASSWORD ITINERARY_DB_PASSWORD NOTIFICATION_DB_PASSWORD RABBITMQ_PASSWORD; do
   SECRET[$tok]="$(rand)"
 done
 
@@ -35,6 +35,7 @@ reuse() { # token, archivo, patron_sed
 }
 if [[ $FORCE -eq 0 ]]; then
   reuse JWT_SECRET services/auth-stub/.env 's/^JWT_SECRET=//p'
+  reuse AUTH_DB_PASSWORD services/auth-stub/db.env 's/^POSTGRES_PASSWORD=//p'
   reuse AIRPORT_DB_PASSWORD services/airport-service/db.env 's/^POSTGRES_PASSWORD=//p'
   reuse ITINERARY_DB_PASSWORD services/itinerary-service/db.env 's/^POSTGRES_PASSWORD=//p'
   reuse NOTIFICATION_DB_PASSWORD services/notification-function/db.env 's/^POSTGRES_PASSWORD=//p'
@@ -51,7 +52,7 @@ render() { # ejemplo -> destino
 }
 
 for f in \
-  services/auth-stub/.env.example \
+  services/auth-stub/.env.example services/auth-stub/db.env.example \
   services/airport-service/.env.example services/airport-service/db.env.example \
   services/itinerary-service/.env.example services/itinerary-service/db.env.example services/itinerary-service/rabbitmq.env.example \
   services/notification-function/.env.example services/notification-function/db.env.example; do

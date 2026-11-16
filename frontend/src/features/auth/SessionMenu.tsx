@@ -27,7 +27,7 @@ export function SessionMenu() {
         <span className="visually-hidden">Sesión iniciada como </span>
         {username}
       </span>
-      <button type="button" className="btn btn--on-dark btn--sm" onClick={logout}>
+      <button type="button" className="btn btn--on-dark btn--sm" onClick={() => void logout()}>
         <Icon name="logout" size={16} />
         <span className="session__logout-label">Cerrar sesión</span>
       </button>

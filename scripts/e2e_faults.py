@@ -48,8 +48,7 @@ def timed(method, url, body=None, token=None):
         # Un viajero distinto por intento: estas pruebas miden fallos de infraestructura,
         # no la agenda (repetir el mismo vuelo daria 409 por traslape).
         _n[0] += 1
-        _, t = e.http("POST", f"{e.AUTH}/api/auth/token", {"username": f"faults-{os.getpid()}-{_n[0]}"})
-        token = t["access_token"]
+        token = e.sign_in(f"faults-{os.getpid()}-{_n[0]}@example.com")
     t0 = time.time()
     code, resp = e.http(method, url, body, token, timeout=40)
     return code, resp, time.time() - t0
@@ -62,8 +61,7 @@ def create_body(a):
 
 def main():
     fault("reset")
-    _, tok = e.http("POST", f"{e.AUTH}/api/auth/token", {"username": "faults"})
-    token = tok["access_token"]
+    token = e.sign_in(f"faults-{os.getpid()}@example.com")
     code, airports = e.http("GET", f"{e.AIRPORT}/api/airports")
     if code != 200:
         e.step("Precondicion: GET /api/airports", False, f"HTTP {code}")

@@ -17,12 +17,45 @@ UI_URL = os.environ.get("UI_URL", "http://localhost")
 def log(ok,msg): print(("[OK] " if ok else "[FALLA] ")+msg, flush=True)
 with sync_playwright() as p:
     b=p.chromium.launch(); pg=b.new_page(viewport={"width":1400,"height":950})
-    errs=[]; pg.on("pageerror",lambda e:errs.append(str(e))); pg.on("console",lambda m: errs.append(m.text) if m.type=="error" else None)
+    errs=[]; pg.on("pageerror",lambda e:errs.append(str(e))); pg.on("console",lambda m: errs.append(m.text) if m.type=="error" and not re.search(r"status of 40[01]", m.text) else None)  # 400/401 esperados: codigo/contrasena incorrectos y /refresh sin sesion
     pg.goto(UI_URL); pg.wait_for_selector("#login-username")
-    import uuid; pg.fill("#login-username","viajero-"+uuid.uuid4().hex[:5]); pg.fill("#login-email","viajero@example.com")
-    pg.locator('form.login button[type=submit]').click()
-    pg.wait_for_selector("text=Mis itinerarios"); log(True,"login con correo")
-    pg.wait_for_selector("text=Sin correo", state="detached", timeout=3000)
+    import json, urllib.request, uuid
+    MAILPIT = os.environ.get("MAILPIT_URL", "http://localhost:8025")
+    email = f"viajero-{uuid.uuid4().hex[:6]}@example.com"
+    password = "clave-ui-segura-123"  # nosec B105  # NOSONAR: credencial de prueba de una cuenta efimera
+
+    def code_from_inbox(prefix):
+        for _ in range(40):
+            with urllib.request.urlopen(f"{MAILPIT}/api/v1/messages", timeout=10) as r:  # nosec B310
+                msgs = json.load(r).get("messages", [])
+            for m in msgs:
+                if any(t["Address"] == email for t in m["To"]) and (m.get("Subject") or "").startswith(prefix):
+                    return m["Subject"].rsplit(" ", 1)[-1]
+            pg.wait_for_timeout(500)
+        return None
+
+    # Registro con codigo por correo
+    pg.click("text=Crear una cuenta"); pg.fill("#login-username", "Viajero UI")
+    pg.fill("#auth-email", email); pg.fill("#auth-password", password)
+    pg.locator("form.login button[type=submit]").click()
+    pg.wait_for_selector("text=Verifica tu correo"); log(True, "registro: pide el codigo de verificacion")
+    pg.screenshot(path=str(SHOTS / "verificacion.png"))
+    pg.fill("#login-username", "000000"); pg.locator("form.login button[type=submit]").click()
+    pg.wait_for_selector("text=incorrecto"); log(True, "codigo incorrecto se rechaza con mensaje")
+    code = code_from_inbox("Tu código de verificación"); log(bool(code), "el codigo llega por correo (Mailpit)")
+    pg.fill("#login-username", code); pg.locator("form.login button[type=submit]").click()
+    pg.wait_for_selector("text=Mis itinerarios"); log(True, "verificado: entra con sesion iniciada")
+    pg.wait_for_selector("text=Tu cuenta no tiene un correo verificado", state="detached", timeout=3000)
+    # La sesion sobrevive al refrescar (cookie httpOnly) y no hay nada en el almacenamiento del navegador
+    pg.reload(); pg.wait_for_selector("text=Mis itinerarios"); log(True, "refrescar la pagina conserva la sesion")
+    log(pg.evaluate("document.cookie.includes('itinerarios_session')") is False, "la cookie de sesion no es legible desde JavaScript")
+    log(pg.evaluate("localStorage.length + sessionStorage.length") == 0, "nada de tokens en localStorage/sessionStorage")
+    pg.click("text=Cerrar sesión"); pg.wait_for_selector("text=Inicia sesión"); log(True, "cerrar sesion")
+    pg.reload(); pg.wait_for_selector("text=Inicia sesión"); log(True, "tras cerrar sesion, refrescar NO la recupera")
+    pg.fill("#login-username", email); pg.fill("#auth-password", "contraseña-equivocada-1")
+    pg.locator("form.login button[type=submit]").click(); pg.wait_for_selector("text=incorrectos"); log(True, "contrasena incorrecta se rechaza")
+    pg.fill("#auth-password", password); pg.locator("form.login button[type=submit]").click()
+    pg.wait_for_selector("text=Mis itinerarios"); log(True, "login con correo y contrasena")
     pg.click("button:has-text('Nuevo')")
     form=pg.locator("form:has-text('Nuevo vuelo')")
     opts=form.locator("select").first.locator("option").all_inner_texts()

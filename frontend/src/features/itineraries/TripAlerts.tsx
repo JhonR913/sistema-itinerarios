@@ -5,7 +5,7 @@ import type { Itinerary } from "../../types/itinerary";
 interface TripAlertsProps {
   /** Próximo vuelo que aún no sale (ver summarizeItineraries). */
   next: Itinerary | null;
-  /** ¿Inició sesión con correo? Sin correo no hay recordatorios por email. */
+  /** ¿La cuenta tiene correo verificado? Sin él no hay recordatorios por email. */
   hasEmail: boolean;
   now?: Date;
 }
@@ -38,7 +38,7 @@ export function TripAlerts({ next, hasEmail, now = new Date() }: TripAlertsProps
       ) : (
         <p className="alert alert--warn">
           <Icon name="alert" size={16} />
-          <span>Sin correo no podemos enviarte recordatorios. Cierra sesión y vuelve a entrar indicando tu correo.</span>
+          <span>Tu cuenta no tiene un correo verificado, así que no podemos enviarte recordatorios.</span>
         </p>
       )}
     </section>

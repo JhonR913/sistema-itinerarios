@@ -26,3 +26,18 @@ El Quality Gate real debe consultarse en SonarCloud: no se ha ejecutado ningún 
 
 ## Ramas
 `main` ← `develop` ← `feature/*`, con Pull Request. Rama de trabajo de esta entrega: `feature/entrega-validacion`.
+
+
+## SonarCloud: análisis desde CI (obligatorio para que se respete la configuración)
+El *Automatic Analysis* de SonarCloud **ignora** `sonar-project.properties` (no mide cobertura ni aplica
+exclusiones). Para que el Quality Gate refleje el proyecto real:
+1. SonarCloud → proyecto → *Administration → Analysis Method* → **desactivar Automatic Analysis**.
+2. Crear un token (*My Account → Security*) y guardarlo en GitHub como secreto `SONAR_TOKEN`; definir las
+   variables del repositorio `SONAR_ORGANIZATION` y `SONAR_PROJECT_KEY`.
+3. El job `sonarcloud` del CI analiza con `-Dsonar.qualitygate.wait=true`: si el Quality Gate falla, el CI
+   queda en rojo y **no se despliega** (`deploy.yml` solo corre con CI verde).
+
+Si prefieres seguir con Automatic Analysis, replica en la interfaz (*Administration → General Settings →
+Analysis Scope*): exclusiones `tools/**,scripts/**,**/alembic/**,**/tests/**` y exclusiones de duplicación
+`**/alembic/env.py,**/app/main.py,**/settings.py`. Las 3 alertas «Using HTTP protocol is insecure» de
+`tools/*.py` ya llevan `# NOSONAR` con la razón (servidores de prueba locales que no se despliegan).

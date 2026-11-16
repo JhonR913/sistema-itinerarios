@@ -13,6 +13,7 @@ import json
 import sys
 import threading
 from email import message_from_bytes
+from email.header import decode_header, make_header
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from aiosmtpd.controller import Controller
@@ -27,8 +28,8 @@ class Sink:
             "ID": str(len(MESSAGES) + 1),
             "From": {"Address": envelope.mail_from},
             "To": [{"Address": a} for a in envelope.rcpt_tos],
-            "Subject": msg["Subject"],
-            "Snippet": (msg.get_payload() or "")[:120],
+            "Subject": str(make_header(decode_header(msg["Subject"] or ""))),
+            "Snippet": str(msg.get_payload(decode=True) or b"", "utf-8", "replace")[:120],
         })
         return "250 OK"
 
@@ -61,5 +62,5 @@ if __name__ == "__main__":
     http_port = int(sys.argv[2]) if len(sys.argv) > 2 else 8025
     Controller(Sink(), hostname="0.0.0.0", port=smtp_port).start()  # nosec B104
     print(f"SMTP en :{smtp_port}, API tipo Mailpit en :{http_port} (SUMIDERO LOCAL, no es Mailpit)", flush=True)
-    ThreadingHTTPServer(("0.0.0.0", http_port), Api).serve_forever()  # nosec B104
+    ThreadingHTTPServer(("0.0.0.0", http_port), Api).serve_forever()  # nosec B104  # NOSONAR: herramienta de pruebas local, solo datos de prueba (no se despliega)
     threading.Event().wait()

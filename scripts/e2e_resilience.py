@@ -29,8 +29,7 @@ N = 3
 def main():
     # Viajero nuevo en cada corrida: la agenda (409) es por usuario y no debe heredar vuelos viejos.
     user = f"resiliencia-{uuid.uuid4().hex[:6]}"
-    _, tok = e.http("POST", f"{e.AUTH}/api/auth/token", {"username": user})
-    token = tok["access_token"]
+    token = e.sign_in(f"{user}@example.com")
     _, airports = e.http("GET", f"{e.AIRPORT}/api/airports")
 
     subprocess.run(shlex.split(STOP), check=True, capture_output=True)

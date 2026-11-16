@@ -1,0 +1,21 @@
+services:
+  # Tunel de Cloudflare: publica el sitio SIN abrir puertos en el router. Solo se arranca con
+  # `--profile tunnel` (lo hace scripts/deploy.sh); en desarrollo no existe.
+  # El "Public hostname" del tunel (panel de Cloudflare) debe apuntar a  http://traefik:80
+  cloudflared:
+    profiles: ["tunnel"]
+    # Tag tomado de las releases de github.com/cloudflare/cloudflared; si cambia, fijar otro igual de reciente.
+    image: cloudflare/cloudflared:2026.10.5
+    command: tunnel --no-autoupdate run
+    environment:
+      # Obligatorio al usar el perfil `tunnel` (scripts/deploy.sh lo comprueba); vacio en desarrollo.
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:-}
+    depends_on:
+      traefik:
+        condition: service_healthy
+    restart: unless-stopped
+    networks: [itinerarios-net]
+
+networks:
+  itinerarios-net:
+    external: true

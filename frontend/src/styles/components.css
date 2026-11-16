@@ -574,3 +574,18 @@
 .form__grid .field--wide {
   grid-column: 1 / -1;
 }
+
+/* --- Acceso (registro, código, recuperación) ------------------------------ */
+.auth__links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+}
+
+.link-btn:disabled {
+  color: var(--color-text-muted);
+  text-decoration: none;
+  cursor: not-allowed;
+}

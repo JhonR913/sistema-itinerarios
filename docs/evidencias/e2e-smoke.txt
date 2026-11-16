@@ -1,8 +1,14 @@
-# 2026-11-04T16:17:56-05:00 - procesos nativos (pila fastapi 0.162 / starlette 1.10 / PyJWT 2.15), mock API Colombia + sumidero SMTP (no Mailpit)
 [PASS] auth-stub /health - HTTP 200
 [PASS] airport-service /health - HTTP 200
 [PASS] itinerary-service /health - HTTP 200
-[PASS] 1. Login (POST /api/auth/token) devuelve JWT - HTTP 200
+[PASS] 1a. Registro (POST /api/auth/register) -> 202 y se envia un codigo - HTTP 202
+[PASS] 1b. Sin verificar el correo, el login se rechaza (403) - HTTP 403
+[PASS] 1c. El codigo de verificacion llega al buzon (Mailpit)
+[PASS] 1d. Un codigo incorrecto se rechaza (400) - HTTP 400
+[PASS] 1e. Verificar con el codigo correcto devuelve JWT - HTTP 200
+[PASS] 1f. Login con correo y contrasena devuelve JWT - HTTP 200
+[PASS] 1g. Contrasena incorrecta -> 401 - HTTP 401
+[PASS] 1h. El endpoint antiguo sin contrasena (/token) ya no existe - HTTP 404
 [PASS] 2. GET /api/airports devuelve >= 2 aeropuertos - HTTP 200, n=10
 [PASS] 3. Sin token, GET /api/itineraries se rechaza (401/403) - HTTP 401
 [PASS] 4. POST /api/itineraries -> 201 con id - HTTP 201
@@ -14,7 +20,7 @@
 [PASS] 10. Reentrega duplicada NO crea una 2a notificacion (idempotencia) - filas=1
 [PASS] 11. Mensaje invalido va a la dead-letter queue (no se reencola) - mensajes en DLQ=1
 [PASS] 12. El recordatorio vencido se envia (reminders.status = SENT)
-[PASS] 13. El correo llega al buzon SMTP (exactamente 1, sin duplicados) - mensajes para demo-9a6924@example.com: 1
+[PASS] 13. El correo llega al buzon SMTP (exactamente 1, sin duplicados) - mensajes para demo-5432a6@example.com: 1
 [PASS] 14. Editar fecha/hora reprograma el recordatorio (PENDING, nueva fecha) - PUT HTTP 200
 [PASS] 18. Vuelo que se cruza con otro tuyo (en pleno vuelo, otra ciudad) -> 409 OVERLAP - HTTP 409 OVERLAP
 [PASS] 19. Salir de una ciudad donde no aterrizaste -> 409 ORIGIN_MISMATCH - HTTP 409 ORIGIN_MISMATCH
@@ -24,4 +30,4 @@
 [PASS] 16. Borrar cancela el recordatorio y elimina el correo (PII)
 [PASS] 17. El itinerario borrado ya no existe (404) - HTTP 404
 
-Resumen: 24 PASS, 0 FAIL, 0 SKIP
+Resumen: 31 PASS, 0 FAIL, 0 SKIP
