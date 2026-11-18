@@ -1,119 +1,140 @@
-# Despliegue continuo en tu equipo + publicación con Cloudflare Tunnel
+# Despliegue continuo y publicación con Cloudflare Tunnel
 
-Objetivo: cada cambio que se fusiona a `main` (y pasa el CI) se construye y actualiza solo en el
-Docker Desktop de tu PC, y el sitio queda público en tu dominio **sin abrir puertos del router**.
+Objetivo: cada cambio fusionado a `main` que pase la integración continua (CI) se construye y se actualiza
+automáticamente en el Docker Desktop del equipo anfitrión, y el sitio queda público en el dominio propio
+**sin abrir puertos del router**.
 
 ```
-GitHub (main) ──CI en verde──► runner propio (tu PC) ──► scripts/deploy.sh ──► docker compose up -d --build
-                                                                                      │
-Internet ──► Cloudflare (HTTPS, tu dominio) ══ túnel ══► cloudflared ► traefik ► frontend / servicios
+GitHub (main) ──CI en verde──► runner propio (equipo anfitrión) ──► scripts/deploy.sh ──► docker compose up -d --build
+                                                                                               │
+Internet ──► Cloudflare (HTTPS, dominio propio) ══ túnel ══► cloudflared ► traefik ► frontend / servicios
 ```
 
-> **Estado de verificación (honesto).** Lo que se probó de verdad: las pruebas, el flujo completo de
-> registro/verificación/alertas sobre PostgreSQL, RabbitMQ y SMTP reales en proceso nativo, y el
-> navegador (Chromium) con las cabeceras de seguridad. **Lo que NO se pudo probar aquí** (no hay
-> Docker, ni tu cuenta de GitHub, Cloudflare o Gmail): el `docker compose` de producción, el runner,
-> el túnel y el envío real por Gmail. Para eso está la lista de comprobación del final: ejecútala
-> una vez y, si algo falla, pásame el error.
+> **Estado de verificación.** Se probaron: las pruebas automatizadas, el flujo completo de
+> registro, verificación y alertas sobre PostgreSQL, RabbitMQ y SMTP reales en proceso nativo, y el
+> navegador (Chromium) con las cabeceras de seguridad. **No se pudieron probar** en el entorno de desarrollo
+> (sin Docker ni acceso a las cuentas de GitHub, Cloudflare o Gmail): el `docker compose` de producción, el
+> runner, el túnel y el envío real por Gmail. Para ello se incluye la lista de comprobación de la sección 7,
+> que debe ejecutarse una vez; ante cualquier fallo, conviene registrar el mensaje de error para su análisis.
 
-## 0. Qué necesitas
-| Pieza | Detalle |
+## 0. Requisitos
+
+| Elemento | Detalle |
 |---|---|
-| PC con Windows 10/11, Docker Desktop y **Git for Windows** (trae Git Bash) | encendido mientras quieras el sitio disponible |
-| Dominio en Cloudflare | el de Hostinger, con los *nameservers* de Cloudflare ya apuntados |
-| Cuenta de Gmail | con **verificación en dos pasos** activa, para crear una contraseña de aplicación |
-| Este repositorio en GitHub | donde fusionas a `main` |
+| Equipo con Windows 10/11, Docker Desktop y **Git for Windows** (incluye Git Bash) | Debe permanecer encendido mientras el sitio deba estar disponible |
+| Dominio en Cloudflare | Dominio registrado en Hostinger, con los *nameservers* de Cloudflare ya configurados |
+| Cuenta de Gmail | Con **verificación en dos pasos** activa, necesaria para crear una contraseña de aplicación |
+| Repositorio en GitHub | Donde se fusionan los cambios a `main` |
 
 ## 1. Gmail: contraseña de aplicación
-1. Cuenta de Google → *Seguridad* → activa la **verificación en dos pasos**.
-2. Busca **“Contraseñas de aplicaciones”** → crea una (nombre: `itinerarios`) → copia las 16 letras.
-3. **No la pegues en el chat ni en el repositorio.** Se escribe solo en el paso 4.
 
-Límites reales de Gmail: ~500 correos al día. La aplicación lo protege con un tope de **100 códigos
-por hora** en total y 5 por hora y por correo (`MAX_CODES_PER_HOUR_GLOBAL`, `MAX_CODES_PER_HOUR`).
+1. En la cuenta de Google, ir a *Seguridad* y activar la **verificación en dos pasos**.
+2. Buscar **«Contraseñas de aplicaciones»**, crear una (nombre sugerido: `itinerarios`) y copiar los 16 caracteres.
+3. **No debe pegarse en chats ni en el repositorio.** Se introduce únicamente en el paso 4.
+
+Límites reales de Gmail: aproximadamente 500 correos al día. La aplicación se protege con un tope de
+**100 códigos por hora** en total y 5 por hora y por correo (`MAX_CODES_PER_HOUR_GLOBAL`, `MAX_CODES_PER_HOUR`).
 
 ## 2. Cloudflare: túnel
-1. Panel de Cloudflare → **Zero Trust** → *Networks* → **Tunnels** → *Create a tunnel* → tipo **Cloudflared**.
-2. Nombre: `itinerarios`. En “Install and run”, **copia solo el token** (la cadena larga después de `--token`).
-3. Pestaña **Published application / Public hostname** → *Add*:
-   - Subdomain: `itinerarios` · Domain: *tu dominio* (resulta `itinerarios.tudominio.com`)
-   - Service: **Type `HTTP`** · URL **`traefik:80`**  ← el nombre del contenedor, no `localhost`.
-4. En *SSL/TLS* del dominio deja el modo **Full** o **Flexible** (el túnel ya va cifrado hasta Cloudflare).
-   Activa *Always Use HTTPS*.
 
-## 3. Runner de GitHub en tu PC (una sola vez)
-1. Repositorio → *Settings* → *Actions* → *Runners* → **New self-hosted runner** → Windows x64. Sigue los
-   comandos que muestra GitHub (descargar, `config.cmd`). Cuando pregunte por **etiquetas**, escribe:
+1. En el panel de Cloudflare: **Zero Trust** → *Networks* → **Tunnels** → *Create a tunnel* → tipo **Cloudflared**.
+2. Nombre: `itinerarios`. En «Install and run», copiar **únicamente el token** (la cadena larga posterior a `--token`).
+3. En la pestaña **Published application / Public hostname**, seleccionar *Add*:
+   - Subdomain: `itinerarios` · Domain: el dominio propio (resulta `itinerarios.<dominio>`).
+   - Service: **Type `HTTP`** · URL **`traefik:80`** (nombre del contenedor, no `localhost`).
+4. En *SSL/TLS* del dominio, dejar el modo **Full** o **Flexible** (el túnel ya viaja cifrado hasta Cloudflare)
+   y activar *Always Use HTTPS*.
+
+## 3. Runner de GitHub en el equipo (una sola vez)
+
+1. En el repositorio: *Settings* → *Actions* → *Runners* → **New self-hosted runner** → Windows x64. Seguir los
+   comandos que muestra GitHub (descarga y `config.cmd`). Cuando solicite **etiquetas**, indicar:
    `itinerarios`.
-2. Ejecútalo **con tu usuario de Windows** (no como servicio de otra cuenta): Docker Desktop solo
-   funciona dentro de tu sesión. Dos formas:
-   - Manual: `./run.cmd` en esa carpeta (déjalo abierto), o
-   - Automático: *Programador de tareas* → tarea “Al iniciar sesión” que ejecute `run.cmd`.
-3. En Docker Desktop → *Settings* → *General* → activa **Start Docker Desktop when you sign in**.
-4. *Settings* → *Actions* → *General* → “Fork pull request workflows”: **Require approval for all
-   outside collaborators**. Un runner propio ejecuta código en tu PC: nunca lo uses con PR de extraños
-   (el workflow de despliegue solo corre sobre `main`, nunca sobre pull requests).
-5. Opcional: *Settings* → *Environments* → **production** → *Required reviewers* (te pide un clic de
-   aprobación antes de cada despliegue; en repos privados requiere plan de pago).
+2. Ejecutarlo **con el usuario de Windows** (no como servicio de otra cuenta), ya que Docker Desktop solo
+   funciona dentro de la sesión del usuario. Hay dos opciones:
+   - Manual: `./run.cmd` en la carpeta del runner (debe dejarse abierto).
+   - Automática: *Programador de tareas* → tarea «Al iniciar sesión» que ejecute `run.cmd`.
+3. En Docker Desktop: *Settings* → *General* → activar **Start Docker Desktop when you sign in**.
+4. En GitHub: *Settings* → *Actions* → *General* → «Fork pull request workflows»: **Require approval for all
+   outside collaborators**. Un runner propio ejecuta código en el equipo anfitrión, por lo que nunca debe
+   usarse con pull requests de terceros (el workflow de despliegue solo corre sobre `main`, nunca sobre pull requests).
+5. Opcional: *Settings* → *Environments* → **production** → *Required reviewers*, lo que exige una aprobación
+   manual antes de cada despliegue (en repositorios privados requiere un plan de pago).
 
-## 4. Secretos de producción (una sola vez, en tu PC)
-En Git Bash, dentro de una copia del repo (cualquiera):
+## 4. Secretos de producción (una sola vez, en el equipo anfitrión)
+
+En Git Bash, dentro de una copia del repositorio:
+
 ```bash
 ./scripts/configure-prod.sh
 ```
-Te pregunta el Gmail, la contraseña de aplicación y el token del túnel (**sin mostrarlos**) y crea
-`~/itinerarios-config/prod.env` con permisos 600. Ese archivo **no** está en el repositorio ni en
-GitHub. Las contraseñas de las bases de datos y el `JWT_SECRET` los genera el propio despliegue la
-primera vez (aleatorios) y los guarda en la misma carpeta, para que no cambien entre despliegues.
 
-> Cambiar el SMTP o el túnel después: vuelve a ejecutar el script y haz un despliegue (paso 5).
+El script solicita el Gmail, la contraseña de aplicación y el token del túnel (**sin mostrarlos**) y crea
+`~/itinerarios-config/prod.env` con permisos 600. Ese archivo **no** está en el repositorio ni en GitHub.
+Las contraseñas de las bases de datos y el `JWT_SECRET` los genera el propio despliegue la primera vez
+(valores aleatorios) y los guarda en la misma carpeta para que no cambien entre despliegues.
 
-## 5. Primer despliegue y los siguientes
-- **Primero a mano** (para ver los errores en vivo): en Git Bash, `./scripts/deploy.sh`.
-- **Automático**: fusiona un PR a `main`. Se ejecuta **CI** y, si termina en verde, **Deploy**
-  (pestaña *Actions*). También puedes lanzarlo con *Actions → Deploy → Run workflow* (solo sobre `main`).
-- El script: restaura secretos → completa `.env` faltantes → `docker compose up -d --build` →
-  espera a que todos los contenedores estén *healthy* → prueba de humo (`/`, `/api/airports`,
-  `/api/auth/refresh` debe dar 401) → falla con código ≠ 0 y logs si algo no quedó bien.
-- Los datos (PostgreSQL) viven en volúmenes de Docker del proyecto `itinerarios` y **sobreviven** a
-  los despliegues. Las migraciones se aplican solas al arrancar cada servicio.
+> Para cambiar el SMTP o el túnel posteriormente, se vuelve a ejecutar el script y se realiza un despliegue (sección 5).
 
-## 6. Quién puede entrar
-Cualquiera que llegue al sitio puede **crear una cuenta**: correo + contraseña propia (mínimo 10
-caracteres) y un **código de 6 dígitos** que llega a ese correo (vence en 10 min, un solo uso, máx. 5
-intentos). Hasta verificar el correo no hay sesión ni recordatorios. Los recordatorios de vuelo
-solo se envían al correo **verificado** de la cuenta, nunca a uno escrito a mano.
+## 5. Primer despliegue y siguientes
 
-Protecciones incluidas: contraseñas con scrypt; bloqueo de 15 min tras 5 contraseñas erróneas;
-respuestas idénticas exista o no la cuenta; sesión en cookie `httpOnly` + `SameSite=Strict`; límites
-de envío por correo y global; cabeceras CSP/`nosniff`/`X-Frame-Options`.
+- **Primer despliegue manual** (para observar los errores en vivo): en Git Bash, `./scripts/deploy.sh`.
+- **Despliegue automático**: al fusionar un PR a `main` se ejecuta **CI** y, si termina en verde, **Deploy**
+  (pestaña *Actions*). También puede lanzarse desde *Actions → Deploy → Run workflow* (solo sobre `main`).
+- El script realiza, en orden: restauración de secretos → completado de los `.env` faltantes →
+  `docker compose up -d --build` → espera a que todos los contenedores estén *healthy* → prueba de humo
+  (`/`, `/api/airports` y `/api/auth/refresh`, que debe responder 401) → termina con código distinto de 0 y
+  muestra los logs si algo no quedó correcto.
+- Los datos (PostgreSQL) residen en volúmenes de Docker del proyecto `itinerarios` y **se conservan** entre
+  despliegues. Las migraciones se aplican automáticamente al arrancar cada servicio.
 
-Lo que **no** hay (decisión consciente, ver `docs/seguridad.md`): *captcha*, límite por IP real
-(detrás del túnel todos llegan desde el mismo contenedor) y MFA. Si quieres cerrar el sitio a personas
-concretas (p. ej. el profesor y tu compañero), lo más simple es **Cloudflare Access** (Zero Trust →
-Access → Applications → *Self-hosted* → política “Emails: lista”) sobre el mismo hostname; es gratis
-hasta 50 usuarios y se hace solo en el panel, sin tocar el código. Para frenar bots:
-*Security → WAF → Rate limiting rules* sobre `/api/auth/*` (p. ej. 20 peticiones/minuto por IP).
+## 6. Control de acceso
 
-## 7. Lista de comprobación (ejecútala tú y dime qué falla)
+Cualquier persona que llegue al sitio puede **crear una cuenta** con correo, contraseña propia (mínimo 10
+caracteres) y un **código de 6 dígitos** enviado a ese correo (vence en 10 min, es de un solo uso y admite
+máximo 5 intentos). Mientras el correo no se verifique no hay sesión ni recordatorios. Los recordatorios de
+vuelo se envían únicamente al correo **verificado** de la cuenta, nunca a uno ingresado manualmente.
+
+Protecciones incluidas:
+
+- Contraseñas almacenadas con scrypt.
+- Bloqueo de 15 min tras 5 contraseñas erróneas.
+- Respuestas idénticas exista o no la cuenta.
+- Sesión en cookie `httpOnly` con `SameSite=Strict`.
+- Límites de envío por correo y global.
+- Cabeceras CSP, `nosniff` y `X-Frame-Options`.
+
+Elementos **no incluidos** (decisión deliberada, ver `docs/seguridad.md`): *captcha*, límite por IP real
+(detrás del túnel todas las peticiones llegan desde el mismo contenedor) y MFA.
+
+Para restringir el sitio a personas concretas (por ejemplo, el docente y un compañero), la opción más simple es
+**Cloudflare Access** (Zero Trust → Access → Applications → *Self-hosted* → política «Emails: lista») sobre el
+mismo hostname. Es gratuito hasta 50 usuarios y se configura solo desde el panel, sin modificar el código.
+Para frenar bots: *Security → WAF → Rate limiting rules* sobre `/api/auth/*` (por ejemplo, 20 peticiones por
+minuto por IP).
+
+## 7. Lista de comprobación
+
+Debe ejecutarse una vez en el equipo anfitrión; ante cualquier fallo, registrar el mensaje de error.
+
 1. [ ] `./scripts/configure-prod.sh` termina sin error y crea `~/itinerarios-config/prod.env`.
-2. [ ] `./scripts/deploy.sh` termina con “Despliegue correcto” y la tabla muestra `cloudflared` *Up*.
-3. [ ] `https://itinerarios.tudominio.com` carga el mapa (candado HTTPS).
-4. [ ] Registrarte con **un correo tuyo real**: llega el código de 6 dígitos (mira spam la primera vez).
-5. [ ] Verificar el código → entras. Refrescar la página → **sigues dentro**. Cerrar sesión → vuelve al login.
-6. [ ] Crear un vuelo para **dentro de menos de 24 h**: llega el correo de recordatorio **de inmediato**.
-7. [ ] “Olvidé mi contraseña” → llega código → clave nueva → entras con ella.
-8. [ ] Haz un cambio pequeño en una rama, abre PR, fusiona: aparece **CI** y luego **Deploy** en *Actions*,
-       y el sitio se actualiza solo.
-9. [ ] Reinicia el PC: Docker Desktop y el runner arrancan; el sitio vuelve (los contenedores tienen
-       `restart: unless-stopped`).
+2. [ ] `./scripts/deploy.sh` termina con «Despliegue correcto» y la tabla muestra `cloudflared` en estado *Up*.
+3. [ ] `https://itinerarios.<dominio>` carga el mapa (con candado HTTPS).
+4. [ ] El registro con un correo real envía el código de 6 dígitos (revisar la carpeta de spam la primera vez).
+5. [ ] Al verificar el código se inicia sesión; al refrescar la página la sesión persiste; al cerrar sesión se regresa al login.
+6. [ ] Al crear un vuelo para dentro de menos de 24 h, el correo de recordatorio llega **de inmediato**.
+7. [ ] «Olvidé mi contraseña» envía un código; con la clave nueva se puede iniciar sesión.
+8. [ ] Un cambio pequeño en una rama, con PR y fusión, dispara **CI** y luego **Deploy** en *Actions*, y el sitio se actualiza solo.
+9. [ ] Tras reiniciar el equipo, Docker Desktop y el runner arrancan y el sitio vuelve a estar disponible
+       (los contenedores tienen `restart: unless-stopped`).
 
 ## 8. Problemas frecuentes
+
 | Síntoma | Causa probable |
 |---|---|
-| *Deploy* se queda “Waiting for a runner” | runner apagado o etiqueta distinta de `itinerarios` |
-| `bash.exe` no existe | Git instalado en otra ruta: edita la ruta en `.github/workflows/deploy.yml` |
-| Cloudflare: *Error 1033 / 502* | el túnel no conectó (revisa `docker compose -p itinerarios logs cloudflared`) o el servicio del *hostname* no es `traefik:80` |
-| `pull access denied` para `cloudflared` | el tag fijado en `gateway/cloudflared/docker-compose.yml` no existe: usa uno reciente de las *releases* de cloudflared |
-| No llega el correo / 503 al registrarse | contraseña de aplicación mal copiada, o la cuenta sin verificación en dos pasos; mira `docker compose -p itinerarios logs auth-stub` (aparece `fallo SMTP`, sin la clave) |
-| Docker “no daemon” en el runner | el runner corre como servicio de otra cuenta; ejecútalo con tu usuario |
+| *Deploy* queda en «Waiting for a runner» | Runner apagado o con una etiqueta distinta de `itinerarios` |
+| `bash.exe` no existe | Git instalado en otra ruta; debe editarse la ruta en `.github/workflows/deploy.yml` |
+| Cloudflare: *Error 1033 / 502* | El túnel no conectó (revisar `docker compose -p itinerarios logs cloudflared`) o el servicio del *hostname* no es `traefik:80` |
+| `pull access denied` para `cloudflared` | El tag fijado en `gateway/cloudflared/docker-compose.yml` no existe; usar uno reciente de las *releases* de cloudflared |
+| No llega el correo / 503 al registrarse | Contraseña de aplicación mal copiada o cuenta sin verificación en dos pasos; revisar `docker compose -p itinerarios logs auth-stub` (aparece `fallo SMTP`, sin la clave) |
+| Docker «no daemon» en el runner | El runner corre como servicio de otra cuenta; debe ejecutarse con el usuario de la sesión |
