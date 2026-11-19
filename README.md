@@ -623,6 +623,31 @@ flowchart LR
   SV -->|"SMTP real"| SM[["Servidor de correo"]]
 ```
 
+**Ciclo DevOps del proyecto.**
+
+```mermaid
+flowchart LR
+  J["1. Planificar<br/>Jira: backlog e historias"] --> C["2. Codificar<br/>rama feature/ITI-n"]
+  C --> G["3. Git / GitHub<br/>commit · push · Pull Request y revisión"]
+
+  subgraph CI["Integración continua · GitHub Actions"]
+    direction LR
+    T["4. CI: pruebas<br/>lint · unitarias · integración<br/>gitleaks · trivy · SonarCloud"] --> B["5. Build Docker<br/>docker compose build"]
+    B --> E["E2E<br/>smoke + resiliencia"]
+  end
+
+  G --> T
+  E --> D{"¿merge a main<br/>y CI en verde?"}
+  D -- "no" --> C
+  D -- "sí" --> A["Aprobación manual<br/>(opcional)"]
+  A --> CD["6. CD: despliegue<br/>runner autoalojado<br/>docker compose --profile produccion"]
+  CD --> O["7. Operar<br/>Traefik · cloudflared<br/>healthchecks · Alembic"]
+  O --> OB["8. Observar<br/>logs JSON + X-Trace-Id<br/>Mailpit · consola RabbitMQ"]
+  OB -. "retroalimentación" .-> J
+```
+
+*Figura 7. Ciclo DevOps del proyecto: planificar, codificar, integrar, construir, desplegar, operar y observar.*
+
 **Cómo funciona.**
 
 1. **Disparador:** un `push` o *pull request* ejecuta el CI. Los PR solo se validan; **solo `main` despliega**.
